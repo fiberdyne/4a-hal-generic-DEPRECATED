@@ -3,7 +3,7 @@
   "metadata": {
     "api": "fd-dsp",
     "uid": "fiberdyne_dsp",
-    "info": "Audio HAL for Jabra Solemate USB speaker",
+    "info": "Fiberdyne DSP HAL for Xtensa HiFi2",
     "version": "1.0",
     "require": "alsacore"
   },
