@@ -1,0 +1,262 @@
+{
+  "$schema": "ToBeDone",
+  "metadata": {
+    "api": "fd-dsp",
+    "uid": "fiberdyne_dsp",
+    "info": "Audio HAL for Jabra Solemate USB speaker",
+    "version": "1.0",
+    "require": "alsacore"
+  },
+  "plugins": [
+    {
+      "uid": "fd-dsp-hifi2",
+      "info": "Fiberdyne DSP client library for HiFi2",
+      "basename": "fd-dsp-hifi2",
+      "ldpath": "./fd-dsp-hifi2"
+    }
+  ],
+
+  "comment": "These are per-stream, could look at alsa byte stream?",
+  "control": [
+    {
+      "uid": "Volume",
+      "alsa": {
+        "name": "PCM Playback Volume",
+        "value": 50
+      }
+    },
+    {
+      "uid": "Mute",
+      "alsa": {
+        "name": "PCM Playback Switch",
+        "value": false
+      }
+    },
+    {
+      "uid": "Bass",
+      "alsa": {
+        "name": "PCM Playback Bass",
+        "value": 50
+      }
+    },
+    {
+      "uid": "Mid",
+      "alsa": {
+        "name": "PCM Playback Mid",
+        "value": 50
+      }
+    },
+    {
+      "uid": "Treble",
+      "alsa": {
+        "name": "PCM Playback Treble",
+        "value": 50
+      }
+    },
+    {
+      "uid": "Balance",
+      "alsa": {
+        "name": "PCM Playback Balance",
+        "value": 50
+      }
+    },
+    {
+      "uid": "Fade",
+      "alsa": {
+        "name": "PCM Playback Fade",
+        "value": 50
+      }
+    }
+  ],
+  "eqpoint": {
+    "action": [
+      {
+        "uid": "eq-add-point",
+        "function": "plugin://fd-dsp-hifi2/eq_add_point"
+      },
+      {
+        "uid": "eq-remove-point",
+        "function": "plugin://fd-dsp-hifi2/eq_remove_point"
+      }
+    ]
+  },
+  "filter": {
+    "plugin": "fd-dsp-hifi2",
+    "action": [
+      {
+        "uid": "filter-hip",
+        "function": "plugin://fd-dsp-hifi2/filter_hip"
+      }
+    ]
+  },
+  "cards": {
+    "uid": "A",
+    "alsa": "xf-dsp-alsa:0,1",
+    "desc": "Xtensa R-Car HiFi2 DSP",
+    "action": {
+      "uid": "init-snd-card",
+      "function": "plugin://fd-dsp-hifi2/init-stereo"
+    },
+    "channels": {
+      "sink": [
+        {
+          "uid": "FrontRightMain",
+          "type": "FullRange",
+          "port": 0
+        },
+        {
+          "uid": "FrontLeftMain",
+          "type": "FullRange",
+          "port": 1
+        },
+        {
+          "uid": "FrontLeftHigh",
+          "type": "HighRange",
+          "port": 2
+        },
+        {
+          "uid": "FrontRightHigh",
+          "type": "HighRange",
+          "port": 3
+        },
+        {
+          "uid": "Center",
+          "type": "FulRange",
+          "port": 4
+        },
+        {
+          "uid": "LFE",
+          "type": "LowRange",
+          "port": 5
+        }
+      ],
+      "source": [
+        {
+          "uid": "FrontRightMic",
+          "type": "Directional",
+          "port": 0
+        }
+      ]
+    }
+  },
+  "info": "This is totally an abstraction",
+  "zone": [
+    {
+      "uid": "FrontSeat",
+      "type": "sink",
+      "mapping": [
+        [
+          "FrontRightMain",
+          "FrontRightHigh"
+        ],
+        [
+          "FrontLeftMain",
+          "FrontLeftHigh"
+        ]
+      ]
+    },
+    {
+      "uid": "RearSeat",
+      "type": "sink",
+      "mapping": [
+        [
+          "RearRightMain",
+          "RearRightHigh"
+        ],
+        [
+          "RearLeftMain",
+          "RearLeftHigh"
+        ]
+      ]
+    },
+    {
+      "uid": "DriverMic",
+      "type": "source",
+      "mapping": [
+        [
+          "FrontRightMic"
+        ]
+      ]
+    },
+    {
+      "uid": "FiveOne",
+      "type": "sink",
+      "mapping": [
+        [
+          "FrontRightMain",
+          "FrontRightHigh"
+        ],
+        [
+          "FrontLeftMain",
+          "FrontLeftHigh"
+        ],
+        [
+          "RearRightMain",
+          "RearRightHigh"
+        ],
+        [
+          "RearLeftMain",
+          "RearLeftHigh"
+        ],
+        [
+          "Center"
+        ],
+        [
+          "LFE"
+        ]
+      ]
+    },
+    {
+      "uid": "StereoFour",
+      "type": "sink",
+      "mapping": [
+        [
+          "FrontRightMain",
+          "FrontRightHigh",
+          "RearRightMain",
+          "RearRightHigh"
+        ],
+        [
+          "FrontLeftMain",
+          "FrontLeftHigh",
+          "RearLeftMain",
+          "RearLeftHigh"
+        ]
+      ]
+    }
+  ],
+
+  "comment": "These are exposed as ALSA PCMs",
+  "streams": [
+    {
+      "name": "speech-engine",
+      "profile": "profile-speech",
+      "source": "DriverMic",
+      "sink": {
+        "zone": "FrontSeat",
+        "volume": 50,
+        "mute": false,
+        "bass": 50,
+        "mid": 50,
+        "treble": 50,
+        "balance": 50,
+        "fade": 50
+      }
+    },
+    {
+      "name": "phone",
+      "source": "DriverMic",
+      "sink": "FrontSeat"
+    },
+    {
+      "name": "stereo",
+      "profile": "profile-dynamic",
+      "sink": "StereoFour"
+    },
+    {
+      "name": "5_1",
+      "profile": "profile-dynamic",
+      "sink": "FiveOne"
+    }
+  ]
+}
