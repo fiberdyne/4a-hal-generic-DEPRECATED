@@ -36,5 +36,5 @@ Finally, run afb-daemon.
 
 ```
 cd 4a-hal-fd-dsp/build/package
-afb-daemon --verbose --verbose --port=1234 --rootdir=./ --roothttp=./htdocs --ldpath=./lib
+afb-daemon --verbose --verbose --port=1234 --rootdir=./ --roothttp=./htdocs --ldpath=./lib --token=
 ```
