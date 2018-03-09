@@ -21,7 +21,18 @@ mkdir -p build && cd build
 cmake ..
 make
 ```
-Finally, copy the lib from 4a-alsa-core/build/package/lib to 4a-hal-fd-dsp/build/package/lib before executing afb-daemon.
+
+
+Copy the lib from 4a-alsa-core/build/package/lib to 4a-hal-fd-dsp/build/package/lib before executing afb-daemon.
+
+Note: If running on a remote system, rsync the package folder to the device, connect and execute afb there. ```rsync``` is a nice command that makes this easy for you.
+
+```
+cd 4a-hal-fd-dsp/build
+rsync -av package root@192.168.1.198:package
+```
+
+Finally, run afb-daemon.
 
 ```
 cd 4a-hal-fd-dsp/build/package
