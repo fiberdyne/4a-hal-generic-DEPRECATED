@@ -1,0 +1,64 @@
+{
+    "cardprops": [
+        {
+            "name": "CardName",
+            "sink": [
+                {
+                    "type": "FrontLeftFullRange",
+                    "port": 0
+                },
+                {
+                    "type": "FrontRightFullRange",
+                    "port": 1
+                },
+                {
+                    "type": "RearLeftFullRange",
+                    "port": 2
+                },
+                {
+                    "type": "FrontRightFullRange",
+                    "port": 3
+                },
+                {
+                    "type": "Center",
+                    "port": 4
+                },
+                {
+                    "type": "LFE",
+                    "port": 5
+                }
+            ],
+            "source": [
+                {
+                    "type": "FrontRightMic",
+                    "port": 0
+                }
+            ]
+        }
+    ],
+    "streammap": [
+        {
+            "stream": "Stereo",
+            "source": {
+                "channels": 1,
+                "mapping": [
+                    "FrontRightMic"
+                ]
+            },
+            "sink": {
+                "channels": 2,
+                "mapping": [
+                    [
+                        "FrontLeftFullRange",
+                        "RearLeftFullRange"
+                    ],
+                    [
+                        "FrontLeftFullRange",
+                        "FrontRightFullRange",
+                        "RearRightFullRange"
+                    ]
+                ]
+            }
+        }
+    ]
+}
