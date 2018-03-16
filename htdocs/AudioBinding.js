@@ -150,8 +150,10 @@
             // display response as for normal onclick action
             replyok(result);
             var response=result.response;
-
-
+            
+            while (self.options.length > 1) {                
+                self.remove(1);
+            } 
 
             // fulfill select with avaliable active HAL
             for (idx=0; idx<response.length; idx++) {
@@ -163,7 +165,7 @@
 
                 self.appendChild(opt);
             }
-            self.selectedIndex=2;
+            self.selectedIndex=1;
             numid = parseInt (self.value);
         }
 
