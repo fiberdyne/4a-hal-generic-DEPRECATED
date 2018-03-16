@@ -20,7 +20,10 @@
 PROJECT_TARGET_ADD(hal-fddsp)
 
     # Define project Targets
-    ADD_LIBRARY(hal-fddsp MODULE hal_fd_dsp.c)
+    ADD_LIBRARY(hal-fddsp MODULE 
+    hal_fd_dsp.c 
+    dsphal_utility.c dsphal_utility.h
+    )
 
     # Binder exposes a unique public entry point
     SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES

@@ -1,12 +1,24 @@
 #define _GNU_SOURCE
 #include <string.h>
+#include "dsphal_utility.h"
 #include "hal-interface.h"
 #include "wrap-json.h"
+#include "filescan-utils.h"
+#include <sys/mman.h>
+#include <sys/stat.h>
 
-#define ALSA_CARD_NAME    "HDA Intel PCH"
-#define ALSA_DEVICE_ID    "HDMI 0"
-#define PCM_MAX_CHANNELS  6
+#if 1
+#define ALSA_CARD_NAME "USB Sound Blaster HD"
+#define ALSA_DEVICE_ID "USB Audio"
+#else 
+#define ALSA_CARD_NAME "HDA Intel PCH"
+#define ALSA_DEVICE_ID "ALC887-VD Analog"
+#endif
+#define PCM_MAX_CHANNELS 6
 
+json_object *loadHalConfig(void);
+
+#if 0
 /* Default Values for MasterVolume Ramping */
 STATIC halVolRampT volRampMaster= {
     .mode    = RAMP_VOL_NORMAL,
@@ -100,62 +112,71 @@ STATIC halVolRampT volRampFallback= {
     .stepDown= 2,
     .stepUp  = 4,
 };
+#endif
 
 static int master_volume = 80;
 static json_bool master_switch;
-static int pcm_volume[PCM_MAX_CHANNELS] = {100,100,100,100,100,100};
+static int pcm_volume[PCM_MAX_CHANNELS] = {100, 100, 100, 100, 100, 100};
 
-void fddsp_master_vol_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void* handle,  json_object *j_obj) {
+void fddsp_master_vol_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void *handle, json_object *j_obj)
+{
 
     const char *j_str = json_object_to_json_string(j_obj);
-
-    if (wrap_json_unpack(j_obj, "[i!]", &master_volume) == 0) {
+    AFB_NOTICE("fddsp_master_vol_cb: Calling Master Volume Cb");
+    if (wrap_json_unpack(j_obj, "[i!]", &master_volume) == 0)
+    {
         AFB_NOTICE("master_volume: %s, value=%d", j_str, master_volume);
         //wrap_volume_master(master_volume);
     }
-    else {
+    else
+    {
         AFB_NOTICE("master_volume: INVALID STRING %s", j_str);
     }
 }
 
-void fddsp_master_switch_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void* handle,  json_object *j_obj) {
+void fddsp_master_switch_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void *handle, json_object *j_obj)
+{
 
     const char *j_str = json_object_to_json_string(j_obj);
-
-    if (wrap_json_unpack(j_obj, "[b!]", &master_switch) == 0) {
+    AFB_NOTICE("fddsp_master_switch_cb: Calling Master Switch Cb");
+    if (wrap_json_unpack(j_obj, "[b!]", &master_switch) == 0)
+    {
         AFB_NOTICE("master_switch: %s, value=%d", j_str, master_switch);
     }
-    else {
+    else
+    {
         AFB_NOTICE("master_switch: INVALID STRING %s", j_str);
     }
 }
 
-void fddsp_pcm_vol_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void* handle,  json_object *j_obj) {
+void fddsp_pcm_vol_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void *handle, json_object *j_obj)
+{
 
     const char *j_str = json_object_to_json_string(j_obj);
-
-    if (wrap_json_unpack(j_obj, "[iiiiii!]", &pcm_volume[0], &pcm_volume[1], &pcm_volume[2], &pcm_volume[3],
-                                             &pcm_volume[4], &pcm_volume[5]) == 0) {
+    AFB_NOTICE("fddsp_pcm_vol_cb: Calling PCM Volume Cb");
+    if (wrap_json_unpack(j_obj, "[ii!]", &pcm_volume[0], &pcm_volume[1]) == 0)
+    {
         AFB_NOTICE("pcm_vol: %s", j_str);
         //wrap_volume_pcm(pcm_volume, PCM_MAX_CHANNELS/*array size*/);
     }
-    else {
+    else
+    {
         AFB_NOTICE("pcm_vol: INVALID STRING %s", j_str);
     }
 }
 
 /* declare ALSA mixer controls */
-STATIC alsaHalMapT  alsaHalMap[]= {
-  { .tag=Master_Playback_Volume, .cb={.callback=fddsp_master_vol_cb, .handle=&master_volume}, .info="Sets master playback volume",
-    .ctl={.numid=CTL_AUTO, .type=SND_CTL_ELEM_TYPE_INTEGER, .count=1, .minval=0, .maxval=100, .step=1, .value=80, .name="Master Playback Volume"}
+STATIC alsaHalMapT alsaHalMap[] = {
+    {.tag = Master_Playback_Volume, .cb = {.callback = fddsp_master_vol_cb, .handle = &master_volume}, .info = "Sets master playback volume", 
+    .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 0, .maxval = 100, .step = 1, .value = 80, .name = "Master Playback Volume"}},
+    /*
+  { .tag=Master_OnOff_Switch, .cb={.callback=fddsp_master_switch_cb, .handle=&master_switch}, .info="Sets master playback switch",
+    .ctl={.numid=CTL_AUTO, .type=SND_CTL_ELEM_TYPE_INTEGER, .count=1, .minval=0, .maxval=1, .step=1, .value=1, .name="Master Playback Switch"}
   },
-  /*{ .tag=Master_OnOff_Switch, .cb={.callback=unicens_master_switch_cb, .handle=&master_switch}, .info="Sets master playback switch",
-    .ctl={.numid=CTL_AUTO, .type=SND_CTL_ELEM_TYPE_BOOLEAN, .count=1, .minval=0, .maxval=1, .step=1, .value=1, .name="Master Playback Switch"}
-  },*/
-  { .tag=PCM_Playback_Volume, .cb={.callback=fddsp_pcm_vol_cb, .handle=&pcm_volume}, .info="Sets PCM playback volume",
-    .ctl={.numid=CTL_AUTO, .type=SND_CTL_ELEM_TYPE_INTEGER, .count=6, .minval=0, .maxval=100, .step=1, .value=100, .name="PCM Playback Volume"}
-  },
-
+  */
+    {.tag = PCM_Playback_Volume, .cb = {.callback = fddsp_pcm_vol_cb, .handle = &pcm_volume}, .info = "Sets PCM playback volume", 
+    .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 6, .minval = 0, .maxval = 100, .step = 1, .value = 100, .name = "PCM Playback Volume"}},
+#if 0
   // Sound card does not have hardware volume ramping
   { .tag=Master_Playback_Ramp, .cb={.callback=volumeRamp, .handle=&volRampMaster}, .info="RampUp Master Volume",
     .ctl={.numid=CTL_AUTO, .type=SND_CTL_ELEM_TYPE_INTEGER, .name="Master_Ramp", .count=1, .minval=0, .maxval=100, .step=1, .value=80 }
@@ -236,32 +257,50 @@ STATIC alsaHalMapT  alsaHalMap[]= {
   { .tag=Fallback_Playback_Volume      ,
      .ctl={.name="Fallback_Volume",.numid=CTL_AUTO, .type=SND_CTL_ELEM_TYPE_INTEGER,.count=2, .maxval=255, .value=204 }
   },
-  { .tag=EndHalCrlTag}  /* marker for end of the array */
-} ;
-
-/* HAL sound card mapping info */
-STATIC alsaHalSndCardT alsaHalSndCard  = {
-    .name  = ALSA_CARD_NAME,   /*  WARNING: name MUST match with 'aplay -l' */
-    .info  = "HAL for FD-DSP sound card controlled by ADSP binding+plugin",
-    .ctls  = alsaHalMap,
-    .volumeCB = NULL,               /* use default volume normalization function */
+#endif
+    {.tag = EndHalCrlTag} /* marker for end of the array */
 };
 
+/* HAL sound card mapping info */
+STATIC alsaHalSndCardT alsaHalSndCard = {
+    .name = ALSA_CARD_NAME, /*  WARNING: name MUST match with 'aplay -l' */
+    .info = "HAL for FD-DSP sound card controlled by ADSP binding+plugin",
+    .ctls = alsaHalMap,
+    .volumeCB = NULL, /* use default volume normalization function */
+};
+
+#define MAX_FILENAME_LEN 255
 /* initializes ALSA sound card, FDDSP API */
-STATIC int fddsp_service_init() {
+STATIC int fddsp_service_init()
+{
     int err = 0;
+    json_object *configJ;
+
     AFB_NOTICE("Initializing HAL-FDDSP");
 
+    configJ = loadHalConfig();
+    //AFB_NOTICE("Config file: %s", json_object_get_string(configJ));
+
+    getConfigurationString(configJ);
+    
+    // Init cards over AFB to plugin
+
+    // Set default values according to our config file.
+    
+    
     err = halServiceInit(afbBindingV2.api, &alsaHalSndCard);
-    if (err) {
+    if (err)
+    {
         AFB_ERROR("Cannot initialize ALSA soundcard.");
         goto OnErrorExit;
     }
 
-/*
-    err= afb_daemon_require_api("FDDSP", 1);
+    // send afb alsacore/ctlset?...
+
+    /*
+    err= afb_daemon_require_api("DSP-FD", 1);
     if (err) {
-        AFB_ERROR("Failed to access FDDSP API");
+        AFB_ERROR("Failed to access DSP-FD API");
         goto OnErrorExit;
     }
 */
@@ -272,26 +311,73 @@ OnErrorExit:
 }
 
 // This receive all event this binding subscribe to
-PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event) {
-
-    if (strncmp(evtname, "alsacore/", 9) == 0) {
+PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event)
+{
+    AFB_NOTICE("fddsp_event_cb: Event Received (%s)", evtname);
+    if (strncmp(evtname, "alsacore/", 9) == 0)
+    {
         halServiceEvent(evtname, j_event);
         return;
     }
 
-    if (strncmp(evtname, "FDDSP/", 8) == 0) {
+    if (strncmp(evtname, "DSP-FD/", 7) == 0)
+    {
         AFB_NOTICE("fddsp_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
-        
+
         return;
     }
 
     AFB_NOTICE("fddsp_event_cb: UNHANDLED EVENT, evtname=%s, event=%s", evtname, json_object_get_string(j_event));
 }
 
+json_object *loadHalConfig(void)
+{
+    char filename[MAX_FILENAME_LEN];
+    json_object *_fullpathJ;
+    json_object *_filenameJ;
+    struct stat st;
+    int fd;
+    int index;
+    json_object *config;
+    char *configJsonStr;
+
+    json_object *_jsonObj = ScanForConfig("./data", CTL_SCAN_FLAT, "onload-", ".json");
+    AFB_NOTICE("config files found at: %s", json_object_get_string(_jsonObj));
+
+    enum json_type jtype = json_object_get_type(_jsonObj);
+    switch (jtype)
+    {
+    case json_type_array:
+        for (index = 0; index < json_object_array_length(_jsonObj); index++)
+        {
+            json_object *tmpJ = json_object_array_get_idx(_jsonObj, index);
+            if (json_object_object_get_ex(tmpJ, "fullpath", &_fullpathJ) &&
+                json_object_object_get_ex(tmpJ, "filename", &_filenameJ))
+            {
+                snprintf(filename, MAX_FILENAME_LEN, "%s/%s", json_object_get_string(_fullpathJ), json_object_get_string(_filenameJ));
+                AFB_NOTICE("fullpath: %s", filename);
+            }
+        }
+        break;
+    default:
+        printf("Default!\n");
+    }
+    fd = open(filename, O_RDONLY);
+    if (fd == -1)
+        perror("open");
+    if (fstat(fd, &st) == -1)
+        perror("fstat");
+    configJsonStr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    config = json_tokener_parse(configJsonStr);
+        
+    return config;
+}
+
 /* API prefix should be unique for each snd card */
 PUBLIC const struct afb_binding_v2 afbBindingV2 = {
-    .api     = "hal-fddsp",
-    .init    = fddsp_service_init,
-    .verbs   = halServiceApi,
+    .api = "hal-fddsp",
+    .init = fddsp_service_init,
+    .verbs = halServiceApi,
     .onevent = fddsp_event_cb,
 };
