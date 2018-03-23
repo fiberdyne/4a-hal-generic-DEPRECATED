@@ -14,7 +14,7 @@
                 "port": 2
             },
             {
-                "type": "FrontRightFullRange",
+                "type": "RearRightFullRange",
                 "port": 3
             },
             {

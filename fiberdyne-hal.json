@@ -15,7 +15,6 @@
       "ldpath": "./fd-dsp-hifi2"
     }
   ],
-
   "comment": "These are per-stream, could look at alsa byte stream?",
   "control": [
     {
@@ -100,33 +99,27 @@
     "channels": {
       "sink": [
         {
-          "uid": "FrontRightMain",
-          "type": "FullRange",
+          "type": "FrontLeftFullRange",
           "port": 0
         },
         {
-          "uid": "FrontLeftMain",
-          "type": "FullRange",
+          "type": "FrontRightFullRange",
           "port": 1
         },
         {
-          "uid": "FrontLeftHigh",
-          "type": "HighRange",
+          "type": "RearLeftFullRange",
           "port": 2
         },
         {
-          "uid": "FrontRightHigh",
-          "type": "HighRange",
+          "type": "FrontRightFullRange",
           "port": 3
         },
         {
-          "uid": "Center",
-          "type": "FulRange",
+          "type": "Center",
           "port": 4
         },
         {
-          "uid": "LFE",
-          "type": "LowRange",
+          "type": "LFE",
           "port": 5
         }
       ],
@@ -179,6 +172,17 @@
       ]
     },
     {
+      "uid": "FullMicSetup",
+      "type":"source",
+      "mapping":
+      [
+        [ "FrontLeftMic"],
+        [ "FrontRightMic"],
+        [ "RearLeftMic"],
+        [ "RearLeftMic"]
+      ]
+    }
+    {
       "uid": "FiveOne",
       "type": "sink",
       "mapping": [
@@ -225,38 +229,59 @@
       ]
     }
   ],
-
-  "comment": "These are exposed as ALSA PCMs",
   "streams": [
     {
       "name": "speech-engine",
       "profile": "profile-speech",
-      "source": "DriverMic",
+      "source": {
+        "zone":"DriverMic",
+        "defaultconfig":{
+          "mute": true
+        }
+      },
       "sink": {
         "zone": "FrontSeat",
-        "volume": 50,
-        "mute": false,
-        "bass": 50,
-        "mid": 50,
-        "treble": 50,
-        "balance": 50,
-        "fade": 50
+        "defaultconfig": {
+          "volume": 50,
+          "mute": false,
+          "bass": 50,
+          "mid": 50,
+          "treble": 50,
+          "balance": 50,
+          "fade": 50
+        }
       }
     },
     {
       "name": "phone",
-      "source": "DriverMic",
-      "sink": "FrontSeat"
+      "profile": "test",
+      "source": {
+        "channels": 1,
+        "zone": "DriverMic",
+        "defaultconfig":{
+          "volume":"25"
+        }
+      },
+      "sink": {
+        "channels": 2,
+        "zone": "FrontSeat"
+      }
     },
     {
       "name": "stereo",
       "profile": "profile-dynamic",
-      "sink": "StereoFour"
+      "sink": {
+        "channels": 2,
+        "zone": "StereoFour"
+      }
     },
     {
       "name": "5_1",
       "profile": "profile-dynamic",
-      "sink": "FiveOne"
+      "sink": {
+        "channels": 6,
+        "zone": "FiveOne"
+      }
     }
   ]
 }

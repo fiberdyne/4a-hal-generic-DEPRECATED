@@ -18,14 +18,14 @@
 
 # Project Info
 # ------------------
-set(PROJECT_NAME afb-aaaa)
+set(PROJECT_NAME afb-hal-fddsp)
 set(PROJECT_VERSION "0.1")
-set(PROJECT_PRETTY_NAME "Audio Agent")
-set(PROJECT_DESCRIPTION "Expose Alsa through AGL AppFw")
+set(PROJECT_PRETTY_NAME "AAAA DSP HAL")
+set(PROJECT_DESCRIPTION "Expose HAL for FD DSP")
 set(PROJECT_URL "https://github.com/iotbzh/audio-bindings")
 set(PROJECT_ICON "icon.png")
-set(PROJECT_AUTHOR "Fulup, Ar Foll")
-set(PROJECT_AUTHOR_MAIL "fulup@iot.bzh")
+set(PROJECT_AUTHOR "OSHANNESSY, James")
+set(PROJECT_AUTHOR_MAIL "james.oshannessy@fiberdyne.com.au")
 set(PROJECT_LICENSE "Apache-V2")
 set(PROJECT_LANGUAGES,"C")
 
@@ -141,7 +141,7 @@ set(HTTPDIR htdocs CACHE PATH "Directory holding HTML5 files")
 # Optional location for config.xml.in
 # -----------------------------------
 #set(WIDGET_ICON conf.d/wgt/${PROJECT_ICON} CACHE PATH "Path to the widget icon")
-#set(WIDGET_CONFIG_TEMPLATE ${CMAKE_CURRENT_SOURCE_DIR}/conf.d/wgt/config.xml.in CACHE PATH "Path to widget config file template (config.xml.in)")
+set(WIDGET_CONFIG_TEMPLATE ${CMAKE_CURRENT_SOURCE_DIR}/conf.d/wgt/config.xml.in CACHE PATH "Path to widget config file template (config.xml.in)")
 
 # Mandatory widget Mimetype specification of the main unit
 # --------------------------------------------------------------------------
@@ -158,14 +158,14 @@ set(HTTPDIR htdocs CACHE PATH "Directory holding HTML5 files")
 #	content.src designates the relative path of the binary.
 #	For such application, only security setup is made.
 #
-set(WIDGET_TYPE MimeType_Not_Set)
+set(WIDGET_TYPE application/vnd.agl.service)
 
 # Mandatory Widget entry point file of the main unit
 # --------------------------------------------------------------
 # This is the file that will be executed, loaded,
 # at launch time by the application framework.
 #
-set(WIDGET_ENTRY_POINT EntryPoint_Path_Not_Set)
+set(WIDGET_ENTRY_POINT lib/afb-hal-fddsp.so)
 
 # Optional dependencies order
 # ---------------------------

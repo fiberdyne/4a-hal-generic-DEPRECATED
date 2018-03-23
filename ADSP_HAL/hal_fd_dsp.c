@@ -8,15 +8,16 @@
 #include <sys/stat.h>
 
 #if 1
-#define ALSA_CARD_NAME "USB Sound Blaster HD"
-#define ALSA_DEVICE_ID "USB Audio"
-#else 
+#define ALSA_CARD_NAME "xfalsa"
+#else
 #define ALSA_CARD_NAME "HDA Intel PCH"
 #define ALSA_DEVICE_ID "ALC887-VD Analog"
 #endif
 #define PCM_MAX_CHANNELS 6
 
 json_object *loadHalConfig(void);
+static void initialize_sound_card_cb(void *closure, int status, struct json_object *j_response);
+void initialize_sound_card(json_object *cfgStrJ);
 
 #if 0
 /* Default Values for MasterVolume Ramping */
@@ -117,6 +118,7 @@ STATIC halVolRampT volRampFallback= {
 static int master_volume = 80;
 static json_bool master_switch;
 static int pcm_volume[PCM_MAX_CHANNELS] = {100, 100, 100, 100, 100, 100};
+static int pcm_volume2[10] = {50, 50, 50, 50, 50, 50, 50, 50, 50, 50};
 
 void fddsp_master_vol_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void *handle, json_object *j_obj)
 {
@@ -165,17 +167,33 @@ void fddsp_pcm_vol_cb(halCtlsTagT tag, alsaHalCtlMapT *control, void *handle, js
     }
 }
 
+void fddsp_pcm_vol_cb2(halCtlsTagT tag, alsaHalCtlMapT *control, void *handle, json_object *j_obj)
+{
+
+    const char *j_str = json_object_to_json_string(j_obj);
+    AFB_NOTICE("fddsp_pcm_vol_cb: Calling PCM Volume Cb");
+    if (wrap_json_unpack(j_obj, "[iiiiiiiiii!]", &pcm_volume2[0], &pcm_volume2[1],&pcm_volume2[2],&pcm_volume2[3],&pcm_volume2[4],&pcm_volume2[5],&pcm_volume2[6],&pcm_volume2[7],&pcm_volume2[8],&pcm_volume2[9] ) == 0)
+    {
+        AFB_NOTICE("pcm_vol: %s", j_str);
+        //wrap_volume_pcm(pcm_volume, PCM_MAX_CHANNELS/*array size*/);
+    }
+    else
+    {
+        AFB_NOTICE("pcm_vol: INVALID STRING %s", j_str);
+    }
+}
+
 /* declare ALSA mixer controls */
 STATIC alsaHalMapT alsaHalMap[] = {
-    {.tag = Master_Playback_Volume, .cb = {.callback = fddsp_master_vol_cb, .handle = &master_volume}, .info = "Sets master playback volume", 
-    .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 0, .maxval = 100, .step = 1, .value = 80, .name = "Master Playback Volume"}},
+
+    {.tag = Master_Playback_Volume, .cb = {.callback = fddsp_master_vol_cb, .handle = &master_volume}, .info = "Sets master playback volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 0, .maxval = 100, .step = 1, .value = 80, .name = "Master Playback Volume"}},
     /*
   { .tag=Master_OnOff_Switch, .cb={.callback=fddsp_master_switch_cb, .handle=&master_switch}, .info="Sets master playback switch",
     .ctl={.numid=CTL_AUTO, .type=SND_CTL_ELEM_TYPE_INTEGER, .count=1, .minval=0, .maxval=1, .step=1, .value=1, .name="Master Playback Switch"}
   },
   */
-    {.tag = PCM_Playback_Volume, .cb = {.callback = fddsp_pcm_vol_cb, .handle = &pcm_volume}, .info = "Sets PCM playback volume", 
-    .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 6, .minval = 0, .maxval = 100, .step = 1, .value = 100, .name = "PCM Playback Volume"}},
+    {.tag = PCM_Playback_Volume, .cb = {.callback = fddsp_pcm_vol_cb, .handle = &pcm_volume}, .info = "Sets PCM playback volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 6, .minval = 0, .maxval = 100, .step = 1, .value = 100, .name = "PCM Playback Volume"}},
+    {.tag = PCM_Playback_Volume, .cb = {.callback = fddsp_pcm_vol_cb2, .handle = &pcm_volume2}, .info = "Sets PCM playback volume 2", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 4, .minval = 0, .maxval = 100, .step = 1, .value = 100, .name = "PCM Playback Volume 2"}},
 #if 0
   // Sound card does not have hardware volume ramping
   { .tag=Master_Playback_Ramp, .cb={.callback=volumeRamp, .handle=&volRampMaster}, .info="RampUp Master Volume",
@@ -278,32 +296,28 @@ STATIC int fddsp_service_init()
 
     AFB_NOTICE("Initializing HAL-FDDSP");
 
+    // Get the config file.
     configJ = loadHalConfig();
-    //AFB_NOTICE("Config file: %s", json_object_get_string(configJ));
 
-    getConfigurationString(configJ);
-    
-    // Init cards over AFB to plugin
+    // Check that our plugin is present. If so, we can initialize it.
+    err = afb_daemon_require_api("fd-dsp-hifi2", 1);
+    if (err)
+    {
+        AFB_ERROR("Failed to access fd-dsp-hifi2 API");
+        goto OnErrorExit;
+    }
 
-    // Set default values according to our config file.
-    
-    
+    initialize_sound_card(configJ);
+
+#if 1
+    AFB_NOTICE("Start halServiceInit section");
     err = halServiceInit(afbBindingV2.api, &alsaHalSndCard);
     if (err)
     {
         AFB_ERROR("Cannot initialize ALSA soundcard.");
         goto OnErrorExit;
     }
-
-    // send afb alsacore/ctlset?...
-
-    /*
-    err= afb_daemon_require_api("DSP-FD", 1);
-    if (err) {
-        AFB_ERROR("Failed to access DSP-FD API");
-        goto OnErrorExit;
-    }
-*/
+#endif
 
 OnErrorExit:
     AFB_NOTICE("Initializing HAL-FDDSP done..");
@@ -320,7 +334,14 @@ PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event)
         return;
     }
 
-    if (strncmp(evtname, "DSP-FD/", 7) == 0)
+    if (strncmp(evtname, "fd-dsp-hifi2/", 13) == 0)
+    {
+        AFB_NOTICE("fddsp_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
+
+        return;
+    }
+
+    if (strncmp(evtname, "FDDSP/", 6) == 0)
     {
         AFB_NOTICE("fddsp_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
 
@@ -330,38 +351,113 @@ PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event)
     AFB_NOTICE("fddsp_event_cb: UNHANDLED EVENT, evtname=%s, event=%s", evtname, json_object_get_string(j_event));
 }
 
+static void initialize_sound_card_cb(void *closure, int status, struct json_object *j_response)
+{
+    int err;
+    json_object *j_obj;
+
+    int cfgErrCode;
+    const char *cfgErrMessage;
+
+    AFB_NOTICE("initialize_sound_card_cb: closure=%p status=%d, res=%s", closure, status, json_object_to_json_string(j_response));
+
+    if (json_object_object_get_ex(j_response, "response", &j_obj))
+    {
+        //wrap_json_optarray_for_all(j_obj, &unicens_apply_card_value, NULL);
+
+        err = wrap_json_unpack(j_obj, "{s:i,s:s}", "errcode", &cfgErrCode, "message", &cfgErrMessage);
+
+        if (err)
+        {
+            AFB_ERROR("Soundcard Init Fail: %s", cfgErrMessage);
+            goto OnErrorExit;
+        }
+    }
+
+    AFB_INFO("Soundcard has been initialized, now initializing the Hal");
+
+OnErrorExit:
+    return;
+}
+
+void initialize_sound_card(json_object *configJ)
+{
+    json_object *configurationStringJ = NULL;
+    json_object *cfgResultJ = NULL;
+
+    /*
+    int err;
+    err = wrap_json_pack(&j_query, "{s:s, s:i}", "devid", dev_id, "mode", 0);
+
+    if (err) {
+        AFB_ERROR("Failed to call wrap_json_pack");
+        goto OnErrorExit;
+    }
+*/
+    configurationStringJ = getConfigurationString(configJ);
+
+    AFB_NOTICE("Configuration String recieved, sending to sound card");
+    
+    #if 0
+    afb_service_call("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ,
+                     &initialize_sound_card_cb,
+                     NULL);
+    #else
+    afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ, &cfgResultJ);
+    AFB_NOTICE("result: %s", json_object_get_string(cfgResultJ));
+    #endif
+
+    return;
+}
+
 json_object *loadHalConfig(void)
 {
     char filename[MAX_FILENAME_LEN];
-    json_object *_fullpathJ;
-    json_object *_filenameJ;
     struct stat st;
     int fd;
-    int index;
-    json_object *config;
+    json_object *config = NULL;
     char *configJsonStr;
+    char *bindingDirPath = GetBindingDirPath();
+    
+    AFB_NOTICE("Binding path: %s", bindingDirPath);
+#if 0
+    int index;
+    const char *_fullpath = "";
+    const char *_filename = "";
+    json_object *_jsonObj = ScanForConfig(bindingDirPath, CTL_SCAN_RECURSIVE, "onload-", ".json");
 
-    json_object *_jsonObj = ScanForConfig("./data", CTL_SCAN_FLAT, "onload-", ".json");
-    AFB_NOTICE("config files found at: %s", json_object_get_string(_jsonObj));
+    if(_jsonObj)
+        AFB_NOTICE("config files found at: %s", json_object_get_string(_jsonObj));
+    else
+        AFB_ERROR("Config file was not found!");
 
     enum json_type jtype = json_object_get_type(_jsonObj);
     switch (jtype)
     {
     case json_type_array:
+        //AFB_NOTICE("Json config object is an Array!");
         for (index = 0; index < json_object_array_length(_jsonObj); index++)
         {
             json_object *tmpJ = json_object_array_get_idx(_jsonObj, index);
-            if (json_object_object_get_ex(tmpJ, "fullpath", &_fullpathJ) &&
-                json_object_object_get_ex(tmpJ, "filename", &_filenameJ))
+            //AFB_NOTICE("Getting object: %s",json_object_get_string(tmpJ));
+
+            if(tmpJ)
             {
-                snprintf(filename, MAX_FILENAME_LEN, "%s/%s", json_object_get_string(_fullpathJ), json_object_get_string(_filenameJ));
+                wrap_json_unpack(tmpJ, "{s:s,s:s}", "fullpath",&_fullpath, "filename",&_filename);
+                //AFB_NOTICE("%s/%s",_fullpath,_filename);
+                snprintf(filename, MAX_FILENAME_LEN, "%s/%s", _fullpath, _filename);
                 AFB_NOTICE("fullpath: %s", filename);
             }
         }
         break;
     default:
-        printf("Default!\n");
+        AFB_NOTICE("Json config object is NOT an Array");
     }
+#else
+    snprintf(filename, MAX_FILENAME_LEN, "%s/var/%s", bindingDirPath, "onload-config-0001.json");
+    AFB_NOTICE("path: %s", filename);
+#endif
+
     fd = open(filename, O_RDONLY);
     if (fd == -1)
         perror("open");
@@ -370,7 +466,7 @@ json_object *loadHalConfig(void)
     configJsonStr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
     config = json_tokener_parse(configJsonStr);
-        
+
     return config;
 }
 

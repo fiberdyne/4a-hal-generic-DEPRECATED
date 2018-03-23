@@ -118,8 +118,7 @@ PUBLIC json_object *getConfigurationString(json_object *configJ)
 
     wrap_json_pack(&configurationString, "{s:o,s:o}", "cardprops", cfgCardPropsJ, "streammap", cfgStreamMapJ);
 
-    AFB_NOTICE("Printing Card Prop: %s", json_object_get_string(configurationString));
+    //AFB_NOTICE("Printing configurationString: %s", json_object_get_string(configurationString));
 
-//    AFB_NOTICE("Schema: %s", cfgSchema);
-//    AFB_NOTICE("Streams: %s", json_object_get_string(cfgStreamsJ));
+    return configurationString;
 }
