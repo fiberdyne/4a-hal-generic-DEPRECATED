@@ -22,8 +22,6 @@
 #include "hal-interface.h"
 #include "wrap-json.h"
 
-
-
 #define ALSA_CARD_NAME "xfalsa"
 //#define ALSA_DEVICE_ID "ALC887-VD Analog"
 
@@ -31,36 +29,47 @@
 STATIC halVolRampT volRampMaster = {
     .mode = RAMP_VOL_NORMAL,
     .slave = Master_Playback_Volume,
-    .delay = 100 * 1000, // ramping delay in us
+    .delay = 100 * 1000,
+    .stepDown = 3,
+    .stepUp = 2,
+};
+
+STATIC halVolRampT volRampPhone = {
+    .mode = RAMP_VOL_NORMAL,
+    .slave = Phone_Playback_Volume,
+    .delay = 100 * 1000,
+    .stepDown = 3,
+    .stepUp = 2,
+};
+
+STATIC halVolRampT volRampNavigation = {
+    .mode = RAMP_VOL_NORMAL,
+    .slave = Navigation_Playback_Volume,
+    .delay = 100 * 1000,
+    .stepDown = 3,
+    .stepUp = 2,
+};
+
+STATIC halVolRampT volRampRadio = {
+    .mode = RAMP_VOL_SMOOTH,
+    .slave = Radio_Playback_Volume,
+    .delay = 100 * 1000,
     .stepDown = 1,
     .stepUp = 1,
 };
 
-STATIC halVolRampT volRampPhone = {
-    .slave = Phone_Playback_Volume,
-    .delay = 50 * 1000, // ramping delay in us
-    .stepDown = 2,
-    .stepUp = 4,
-};
+STATIC halVolRampT volRampMultimedia = {
+    .mode = RAMP_VOL_SMOOTH,
+    .slave = Multimedia_Playback_Volume,
+    .delay = 100 * 1000,
+    .stepDown = 1,
+    .stepUp = 1,
+}
+;
 
-STATIC halVolRampT volRampNavigation = {
-    .slave = Navigation_Playback_Volume,
-    .delay = 50 * 1000, // ramping delay in us
-    .stepDown = 2,
-    .stepUp = 4,
-};
-
-STATIC halVolRampT volRampRadio = {
-    .slave = Radio_Playback_Volume,
-    .delay = 50 * 1000, // ramping delay in us
-    .stepDown = 2,
-    .stepUp = 4,
-};
-
-#define PCM_Master_Bass   1000
-#define PCM_Master_Mid    1001
+#define PCM_Master_Bass 1000
+#define PCM_Master_Mid 1001
 #define PCM_Master_Treble 1002
-
 
 /* declare ALSA mixer controls */
 STATIC alsaHalMapT alsaHalMap[] = {
@@ -72,10 +81,12 @@ STATIC alsaHalMapT alsaHalMap[] = {
     {.tag = Navigation_Playback_Volume, .ctl = {.name = "Navigation Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 183, .maxval = 255, .value = 50}},
     {.tag = Phone_Playback_Volume, .ctl = {.name = "Phone Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 183, .maxval = 255, .value = 50}},
     {.tag = Radio_Playback_Volume, .ctl = {.name = "Radio Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 2, .minval = 183, .maxval = 255, .value = 50}},
+    {.tag = Multimedia_Playback_Volume, .ctl = {.name = "Multimedia Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 2, .minval = 183, .maxval = 255, .value = 50}},
 
     {.tag = Navigation_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampNavigation}, .info = "RampUp Navigation Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Navigation_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
     {.tag = Phone_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampPhone}, .info = "RampUp Phone Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Phone_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
     {.tag = Radio_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampRadio}, .info = "RampUp Radio Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Radio_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
+    {.tag = Multimedia_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampMultimedia}, .info = "RampUp Multimedia Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Multimedia_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
 
     {.tag = EndHalCrlTag} /* marker for end of the array */
 };
@@ -108,10 +119,10 @@ STATIC int fddsp_service_init()
     }
 
     // If the dsp plugin is present, we need to configure our custom sound card to provide all the required interfaces.
-    // This will load the configuration json file, and set up the sound card 
+    // This will load the configuration json file, and set up the sound card
     AFB_NOTICE("Start Initialize of sound card");
     err = initialize_sound_card(configJ);
-    if(err)
+    if (err)
     {
         AFB_ERROR("Initializing Sound Card failed!");
         goto OnErrorExit;
