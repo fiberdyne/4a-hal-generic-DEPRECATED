@@ -1,4 +1,5 @@
 <html>
+
 <head>
     <title>Basic Audio Hardware Abstraction Layer Test</title>
     <link rel="stylesheet" href="AudioBinding.css">
@@ -11,9 +12,11 @@
 
     <h1>Simple AlsaHAL tests</h1>
     <button id="connected" onclick="init('hal_registry','alsacore', 'hallist')">Binder WS Fail</button>
-    <button id="mnitoring" onclick="window.open('/monitoring/monitor.html','_monitor_audio')">Debug/Monitoring</a></button>
+    <button id="mnitoring" onclick="window.open('/monitoring/monitor.html','_monitor_audio')">Debug/Monitoring</a>
+    </button>
 
-    <br><br>
+    <br>
+    <br>
     <b>Selected HAL </b>
     <select id='hal_registry'></select>
 
@@ -27,32 +30,67 @@
     <br>
 
     <br>
-    <ol>
+    <ul>
+        <li>
+            <button onclick="callbinder(sndcard,'ctllist')">List Selected HAL Controls </button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlget', {label:'Master_Playback_Volume'})">Get {label:'Master_Playback_Volume'}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlget', {label:'Phone_Volume'})">Get {label:'Phone_Volume'}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlget', {label:'Navigation_Volume'})">Get {label:'Navigation_Volume'}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlget', {label:'Radio_Volume'})">Get {label:'Radio_Volume'}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlget', {label:'Multimedia_Volume'})">Get {label:'Multimedia_Volume'}</button>
+        </li>
+    </ul>
 
-    <li><button onclick="callbinder(sndcard,'ctllist')">List Selected HAL Controls </button></li>
-    <li><button onclick="callbinder(sndcard,'ctlget', {label:'Master_Playback_Volume'})">Get  {label:'Master_Playback_Volume'}</button></li>
-    <li><button onclick="callbinder(sndcard,'ctlget', {label:'PCM_Playback_Volume'})">Get  {label:'PCM_Playback_Volume'}</button></li>
-    <li><button onclick="callbinder(sndcard,'ctlget', [{tag:4},{tag:5}])">Get[{tag:4},{tag:5}]</button></li>
-    <li><button onclick="callbinder(sndcard,'ctlget', [4,5])">Get [4,5]</button></li>
-    <br>
-    <li><button onclick="callbinder(sndcard,'ctlset', {label:'Master_Playback_Volume', val:[50]})">Set {label:'Master_Playback_Volume', value=[50]}</button></li>
-    <li><button onclick="callbinder(sndcard,'ctlset', {label:'PCM_Playback_Volume', val:[90,90]})">Set {label:'PCM_Playback_Volume', value=[90,90]}</button></li>
-    <li><button onclick="callbinder(sndcard,'ctlset', {tag: 4, val:5})">Set {tag: 4, val:5}</button></li>
-    <li><button onclick="callbinder(sndcard,'ctlset', [{tag:4, val:25},{tag:5, val:25}])">Set[{tag:4, val:25},{tag:5, val:25}]</button></li>
-    <li><button onclick="callbinder(sndcard,'ctlset', [{tag:4, val:[55,45]},{tag:5, val:[45,55]}])">Set[{tag:4, val:[55,45]},{tag:5, val:[45,55]}]]</button></li>
-    <br>
+    <ul>
+        <li>
+            <label for="volval">Volume:</label>
+            <input id="volval" type="number" min=0 max=100 step=10 maxlength=3 placeholder="Enter 0-100">
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Master_Playback_Volume', val:[volval.value]})">Set {label:'Master_Playback_Volume', value=[...]}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Phone_Volume', val:[volval.value]})">Set {label:'Phone_Volume', value=[...]}</button>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Phone_Ramp', val:[volval.value]})">Set {label:'Phone_Ramp', value=[...]}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Navigation_Volume', val:[volval.value]})">Set {label:'Navigation_Volume', value=[...]}</button>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Navigation_Ramp', val:[volval.value]})">Set {label:'Navigation_Ramp', value=[...]}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Radio_Volume', val:[volval.value]})">Set {label:'Radio_Volume', value=[...]}</button>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Radio_Ramp', val:[volval.value]})">Set {label:'Radio_Ramp', value=[...]}</button>
+        </li>
+        <li>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Multimedia_Volume', val:[volval.value]})">Set {label:'Multimedia_Volume', value=[...]}</button>
+            <button onclick="callbinder(sndcard,'ctlset', {label:'Multimedia_Ramp', val:[volval.value]})">Set {label:'Multimedia_Ramp', value=[...]}</button>
+        </li>
+        <br>
 
-    <li>
-        <label for="volramp">Volume Ramp</label>
-        <input id="volramp" type="number" min=0 max=100 step=10 maxlength=3 placeholder="Enter 0-100" onChange="callbinder(sndcard,'ctl-set', {label:'Volume_Ramp', val:this.value})">
-    </li>
-    <br>
-    </ol>
+        <li>
+            <label for="volramp">Volume Ramp</label>
+            <input id="volramp" type="number" min=0 max=100 step=10 maxlength=3 placeholder="Enter 0-100" onChange="callbinder(sndcard,'ctl-set', {label:'Volume_Ramp', val:this.value})">
+        </li>
+        <br>
+    </ul>
 
     <div id="main" style="visibility:hidden">
-    <ol>
-    <li>Question <pre id="question"></pre>
-    <li>Response <pre id="output"></pre>
-    <li>Events: <pre id="outevt"></pre>
-    </ol>
+        <ol>
+            <li>Question
+                <pre id="question"></pre>
+                <li>Response
+                    <pre id="output"></pre>
+                    <li>Events:
+                        <pre id="outevt"></pre>
+        </ol>
     </div>
