@@ -121,44 +121,61 @@
   "info": "This is totally an abstraction",
   "zone": [
     {
-      "uid": "DriverOnly",
+      "uid": "StereoFour",
       "type": "sink",
       "mapping": [
-	[ "FrontRightFullRange" ]
+        [
+          "FrontLeftFullRange"
+        ],
+        [
+          "FrontRightFullRange"
+        ]
       ]
     },
     {
-      "uid": "FrontOnly",
+      "uid": "StereoReverse",
       "type": "sink",
       "mapping": [
+        [ "FrontRightFullRange" ],
+	[ "FrontLeftFullRange" ]
+      ]
+    },
+    {
+      "uid": "FiveOne",
+      "type": "sink",
+      "mapping": [
+        [ "FrontLeftFullRange"  ],
+	[ "FrontRightFullRange" ],
 	[ "FrontLeftFullRange"  ],
+	[ "FrontRightFullRange" ],
+	[ "FrontLeftFullRange", "FrontRightFullRange" ],
+	[ "FrontLeftFullRange", "FrontRightFullRange" ]
+      ]
+    },
+    {
+      "uid": "MonoRightOnly",
+      "type": "sink",
+      "mapping": [
 	[ "FrontRightFullRange" ]
       ]
     }
   ],
   "streams": [
     {
-      "name": "Phone",
-      "sink": {
-        "channels": 1,
-        "zone": "DriverOnly"
-      }
-    },
-    {
-      "name": "Navigation",
-      "sink": {
-        "channels": 1,
-        "zone": "DriverOnly"
-      }
-    },
-    {
-      "name": "Radio",
+      "name": "STEREO",
       "sink": {
         "channels": 2,
-        "zone": "FrontOnly"
+        "profile": "profile-dynamic",
+        "zone": "StereoFour"
+      }
+    },
+    {
+      "name": "Mono",
+      "sink": {
+        "channels": 1,
+        "profile": "profile-dynamic",
+        "zone": "MonoRightOnly"
       }
     }
-
-
   ]
 }

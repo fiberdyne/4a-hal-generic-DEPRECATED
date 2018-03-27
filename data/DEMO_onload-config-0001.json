@@ -124,28 +124,60 @@
       "uid": "DriverOnly",
       "type": "sink",
       "mapping": [
-	[ "FrontRightFullRange" ]
+        [
+          "FrontRightFullRange"
+        ]
       ]
     },
     {
       "uid": "FrontOnly",
       "type": "sink",
       "mapping": [
-	[ "FrontLeftFullRange"  ],
-	[ "FrontRightFullRange" ]
+        [
+          "FrontLeftFullRange"
+        ],
+        [
+          "FrontRightFullRange"
+        ]
+      ]
+    },
+    {
+      "uid": "FiveOne",
+      "type": "sink",
+      "mapping": [
+        [
+          "FrontLeftFullRange"
+        ],
+        [
+          "FrontRightFullRange"
+        ],
+        [
+          "FrontRightFullRange"
+        ],
+        [
+          "FrontLeftFullRange"
+        ],
+        [
+          "FrontLeftFullRange",
+          "FrontRightFullRange"
+        ],
+        [
+          "FrontLeftFullRange",
+          "FrontRightFullRange"
+        ]
       ]
     }
   ],
   "streams": [
     {
-      "name": "Phone",
+      "name": "Navigation",
       "sink": {
         "channels": 1,
         "zone": "DriverOnly"
       }
     },
     {
-      "name": "Navigation",
+      "name": "Phone",
       "sink": {
         "channels": 1,
         "zone": "DriverOnly"
@@ -157,8 +189,13 @@
         "channels": 2,
         "zone": "FrontOnly"
       }
+    },
+    {
+      "name": "Multimedia",
+      "sink": {
+        "channels": 6,
+        "zone": "FiveOne"
+      }
     }
-
-
   ]
 }
