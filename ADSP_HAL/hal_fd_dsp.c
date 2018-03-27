@@ -57,9 +57,17 @@ STATIC halVolRampT volRampRadio = {
     .stepUp = 4,
 };
 
+#define PCM_Master_Bass   1000
+#define PCM_Master_Mid    1001
+#define PCM_Master_Treble 1002
+
+
 /* declare ALSA mixer controls */
 STATIC alsaHalMapT alsaHalMap[] = {
     {.tag = Master_Playback_Volume, .ctl = {.name = "Master Playback Volume", .value = 100}},
+    {.tag = PCM_Master_Bass, .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Master Bass Playback Volume", .minval = 0, .maxval = 100, .step = 1, .value = 50}},
+    {.tag = PCM_Master_Mid, .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Master Midrange Playback Volume", .minval = 0, .maxval = 100, .step = 1, .value = 50}},
+    {.tag = PCM_Master_Treble, .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Master Treble Playback Volume", .minval = 0, .maxval = 100, .step = 1, .value = 50}},
 
     {.tag = Navigation_Playback_Volume, .ctl = {.name = "Navigation Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 183, .maxval = 255, .value = 50}},
     {.tag = Phone_Playback_Volume, .ctl = {.name = "Phone Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 183, .maxval = 255, .value = 50}},
@@ -91,7 +99,7 @@ STATIC int fddsp_service_init()
     // Get the config file.
     configJ = loadHalConfig();
 
-    // Check that our plugin is present. If so, we can initialize it.
+    // Check that our dsp plugin is present. If so, we can initialize it.
     err = afb_daemon_require_api("fd-dsp-hifi2", 1);
     if (err)
     {
@@ -99,6 +107,8 @@ STATIC int fddsp_service_init()
         goto OnErrorExit;
     }
 
+    // If the dsp plugin is present, we need to configure our custom sound card to provide all the required interfaces.
+    // This will load the configuration json file, and set up the sound card 
     AFB_NOTICE("Start Initialize of sound card");
     err = initialize_sound_card(configJ);
     if(err)
