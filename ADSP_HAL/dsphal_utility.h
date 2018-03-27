@@ -31,8 +31,18 @@
 #endif
 #define STATIC static
 
-PUBLIC json_object *getMap(json_object *cfgZones, const char *chanType);
+typedef enum
+{
+  DSPHAL_OK,
+  DSPHAL_FAIL
+} DSPHAL_ERRCODE;
 
-PUBLIC json_object* getConfigurationString(json_object *configJ);
+PUBLIC json_object *loadHalConfig(void);
+DSPHAL_ERRCODE initialize_sound_card(json_object *configJ);
+
+PUBLIC json_object *getMap(json_object *cfgZones, const char *chanType);
+PUBLIC json_object *generateCardProperties(json_object *cfgCardsJ);
+PUBLIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ);
+PUBLIC json_object *getConfigurationString(json_object *configJ);
 
 #endif /* HAL_DSPUTILITY_H */

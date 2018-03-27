@@ -80,7 +80,6 @@ STATIC alsaHalSndCardT alsaHalSndCard = {
     .volumeCB = NULL, /* use default volume normalization function */
 };
 
-#define MAX_FILENAME_LEN 255
 /* initializes ALSA sound card, FDDSP API */
 STATIC int fddsp_service_init()
 {
@@ -100,9 +99,14 @@ STATIC int fddsp_service_init()
         goto OnErrorExit;
     }
 
-    initialize_sound_card(configJ);
+    AFB_NOTICE("Start Initialize of sound card");
+    err = initialize_sound_card(configJ);
+    if(err)
+    {
+        AFB_ERROR("Initializing Sound Card failed!");
+        goto OnErrorExit;
+    }
 
-#if 1
     AFB_NOTICE("Start halServiceInit section");
     err = halServiceInit(afbBindingV2.api, &alsaHalSndCard);
     if (err)
@@ -110,10 +114,10 @@ STATIC int fddsp_service_init()
         AFB_ERROR("Cannot initialize ALSA soundcard.");
         goto OnErrorExit;
     }
-#endif
 
+    AFB_NOTICE(".. Initializing Complete!");
 OnErrorExit:
-    AFB_NOTICE("Initializing HAL-FDDSP done..");
+    AFB_NOTICE("fddsp_service_init() - end");
     return err;
 }
 
@@ -134,7 +138,7 @@ PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event)
         return;
     }
 
-    if (strncmp(evtname, "FDDSP/", 6) == 0)
+    if (strncmp(evtname, "hal-fddsp/", 6) == 0)
     {
         AFB_NOTICE("fddsp_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
 
@@ -142,125 +146,6 @@ PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event)
     }
 
     AFB_NOTICE("fddsp_event_cb: UNHANDLED EVENT, evtname=%s, event=%s", evtname, json_object_get_string(j_event));
-}
-
-static void initialize_sound_card_cb(void *closure, int status, struct json_object *j_response)
-{
-    int err;
-    json_object *j_obj;
-
-    int cfgErrCode;
-    const char *cfgErrMessage;
-
-    AFB_NOTICE("initialize_sound_card_cb: closure=%p status=%d, res=%s", closure, status, json_object_to_json_string(j_response));
-
-    if (json_object_object_get_ex(j_response, "response", &j_obj))
-    {
-        //wrap_json_optarray_for_all(j_obj, &unicens_apply_card_value, NULL);
-
-        err = wrap_json_unpack(j_obj, "{s:i,s:s}", "errcode", &cfgErrCode, "message", &cfgErrMessage);
-
-        if (err)
-        {
-            AFB_ERROR("Soundcard Init Fail: %s", cfgErrMessage);
-            goto OnErrorExit;
-        }
-    }
-
-    AFB_INFO("Soundcard has been initialized, now initializing the Hal");
-
-OnErrorExit:
-    return;
-}
-
-void initialize_sound_card(json_object *configJ)
-{
-    json_object *configurationStringJ = NULL;
-    json_object *cfgResultJ = NULL;
-
-    /*
-    int err;
-    err = wrap_json_pack(&j_query, "{s:s, s:i}", "devid", dev_id, "mode", 0);
-
-    if (err) {
-        AFB_ERROR("Failed to call wrap_json_pack");
-        goto OnErrorExit;
-    }
-*/
-    configurationStringJ = getConfigurationString(configJ);
-
-    AFB_NOTICE("Configuration String recieved, sending to sound card");
-    
-    #if 0
-    afb_service_call("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ,
-                     &initialize_sound_card_cb,
-                     NULL);
-    #else
-    afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ, &cfgResultJ);
-    AFB_NOTICE("result: %s", json_object_get_string(cfgResultJ));
-    #endif
-
-    return;
-}
-
-json_object *loadHalConfig(void)
-{
-    char filename[MAX_FILENAME_LEN];
-    struct stat st;
-    int fd;
-    json_object *config = NULL;
-    char *configJsonStr;
-    char *bindingDirPath = GetBindingDirPath();
-    
-    AFB_NOTICE("Binding path: %s", bindingDirPath);
-#if 0
-    int index;
-    const char *_fullpath = "";
-    const char *_filename = "";
-    json_object *_jsonObj = ScanForConfig(bindingDirPath, CTL_SCAN_RECURSIVE, "onload-", ".json");
-
-    if(_jsonObj)
-        AFB_NOTICE("config files found at: %s", json_object_get_string(_jsonObj));
-    else
-        AFB_ERROR("Config file was not found!");
-
-    enum json_type jtype = json_object_get_type(_jsonObj);
-    switch (jtype)
-    {
-    case json_type_array:
-        //AFB_NOTICE("Json config object is an Array!");
-        for (index = 0; index < json_object_array_length(_jsonObj); index++)
-        {
-            json_object *tmpJ = json_object_array_get_idx(_jsonObj, index);
-            //AFB_NOTICE("Getting object: %s",json_object_get_string(tmpJ));
-
-            if(tmpJ)
-            {
-                wrap_json_unpack(tmpJ, "{s:s,s:s}", "fullpath",&_fullpath, "filename",&_filename);
-                //AFB_NOTICE("%s/%s",_fullpath,_filename);
-                snprintf(filename, MAX_FILENAME_LEN, "%s/%s", _fullpath, _filename);
-                AFB_NOTICE("fullpath: %s", filename);
-            }
-        }
-        break;
-    default:
-        AFB_NOTICE("Json config object is NOT an Array");
-    }
-#else
-    snprintf(filename, MAX_FILENAME_LEN, "%s/var/%s", bindingDirPath, "onload-config-0001.json");
-    AFB_NOTICE("path: %s", filename);
-#endif
-
-    fd = open(filename, O_RDONLY);
-    if (fd == -1)
-        perror("open");
-    if (fstat(fd, &st) == -1)
-        perror("fstat");
-    configJsonStr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    close(fd);
-    config = json_tokener_parse(configJsonStr);
-
-    return config;
 }
 
 /* API prefix should be unique for each snd card */
