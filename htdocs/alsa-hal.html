@@ -76,12 +76,6 @@
             <button onclick="callbinder(sndcard,'ctlset', {label:'Multimedia_Ramp', val:[volval.value]})">Set {label:'Multimedia_Ramp', value=[...]}</button>
         </li>
         <br>
-
-        <li>
-            <label for="volramp">Volume Ramp</label>
-            <input id="volramp" type="number" min=0 max=100 step=10 maxlength=3 placeholder="Enter 0-100" onChange="callbinder(sndcard,'ctl-set', {label:'Volume_Ramp', val:this.value})">
-        </li>
-        <br>
     </ul>
 
     <div id="main" style="visibility:hidden">
