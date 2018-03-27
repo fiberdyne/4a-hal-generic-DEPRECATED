@@ -1,6 +1,82 @@
+/*
+ * Copyright (C) 2018 Fiberdyne Systems
+ * 
+ * Author: James O'Shannessy <james.oshannessy@fiberdyne.com.au>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "dsphal_utility.h"
+#include "hal-interface.h"
 #include "wrap-json.h"
 #include <string.h>
+#include "filescan-utils.h"
+#include <sys/mman.h>
+#include <sys/stat.h>
+
+#define MAX_FILENAME_LEN 255
+
+json_object *loadHalConfig(void)
+{
+    char filename[MAX_FILENAME_LEN];
+    struct stat st;
+    int fd;
+    json_object *config = NULL;
+    char *configJsonStr;
+    char *bindingDirPath = GetBindingDirPath();
+
+    AFB_NOTICE("Binding path: %s", bindingDirPath);
+    snprintf(filename, MAX_FILENAME_LEN, "%s/var/%s", bindingDirPath, "onload-config-0001.json");
+    AFB_NOTICE("path: %s", filename);
+
+    fd = open(filename, O_RDONLY);
+    if (fd == -1)
+        perror("open");
+    if (fstat(fd, &st) == -1)
+        perror("fstat");
+    configJsonStr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    config = json_tokener_parse(configJsonStr);
+
+    return config;
+}
+
+DSPHAL_ERRCODE initialize_sound_card(json_object *configJ)
+{
+    json_object *configurationStringJ = NULL;
+    json_object *cfgResultJ = NULL;
+    int result = -1;
+    const char *message;
+
+    configurationStringJ = getConfigurationString(configJ);
+
+    AFB_NOTICE("Configuration String recieved, sending to sound card");
+
+    afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ, &cfgResultJ);
+    AFB_NOTICE("result: %s", json_object_get_string(cfgResultJ));
+
+    wrap_json_unpack(cfgResultJ, "{s:{s:i,s:s}}", "response", "errcode", &result, "message", &message);
+    AFB_NOTICE("Message: %s, ErrCode: %d", message, result);
+
+    if(result)
+    {
+        // Error code was returned, return fail to afb init
+        return DSPHAL_FAIL;
+    }
+
+    // No error found, return success to afb init
+    return DSPHAL_OK;
+}
 
 PUBLIC json_object *getMap(json_object *cfgZones, const char *zoneName)
 {
