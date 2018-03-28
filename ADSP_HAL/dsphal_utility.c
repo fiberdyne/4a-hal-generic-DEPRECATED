@@ -55,6 +55,7 @@ DSPHAL_ERRCODE initialize_sound_card(json_object *configJ)
 {
     json_object *configurationStringJ = NULL;
     json_object *cfgResultJ = NULL;
+    json_object *resultJ = NULL;
     int result = -1;
     const char *message;
 
@@ -62,16 +63,26 @@ DSPHAL_ERRCODE initialize_sound_card(json_object *configJ)
 
     AFB_NOTICE("Configuration String recieved, sending to sound card");
 
-    afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ, &cfgResultJ);
-    AFB_NOTICE("result: %s", json_object_get_string(cfgResultJ));
+    result = afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ, &cfgResultJ);
+    AFB_NOTICE("Result Code: %d, result: %s", result, json_object_get_string(cfgResultJ));
 
-    wrap_json_unpack(cfgResultJ, "{s:{s:i,s:s}}", "response", "errcode", &result, "message", &message);
-    AFB_NOTICE("Message: %s, ErrCode: %d", message, result);
-
-    if(result)
+    if (result)
     {
         // Error code was returned, return fail to afb init
+        const char *strResult;
+        const char *strStatus;
+        int errCode = -1;
+        wrap_json_unpack(cfgResultJ, "{s:{s:s,s:s}}", "request", "status", &strStatus, "info", &strResult);
+        resultJ = json_tokener_parse(strResult);
+        wrap_json_unpack(resultJ, "{s:i,s:s}", "errcode", &errCode, "message", &message);
+        AFB_NOTICE("Status: %s, Message: %s, ErrCode: %d", strStatus, message, errCode);
+
+        // Break out and fail here.
         return DSPHAL_FAIL;
+    } else {
+        int errCode = -1;
+        wrap_json_unpack(cfgResultJ, "{s:{s:i,s:s}}", "response", "errcode", &errCode, "message", &message);
+        AFB_NOTICE("Message: %s, ErrCode: %d", message, result);
     }
 
     // No error found, return success to afb init
