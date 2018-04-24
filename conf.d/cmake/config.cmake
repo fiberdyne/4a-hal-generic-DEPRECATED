@@ -196,11 +196,11 @@ set(AFB_REMPORT "1234" CACHE PATH "Default binder listening port")
 # Print a helper message when every thing is finished
 # ----------------------------------------------------
 if(IS_DIRECTORY $ENV{HOME}/opt/afb-monitoring)
-set(MONITORING_ALIAS "--alias=/monitoring:$ENV{HOME}/opt/afb-monitoring")
+  set(MONITORING_ALIAS "--alias=/monitoring:$ENV{HOME}/opt/afb-monitoring")
 endif()
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/../afb-controller/build/afb-source/afb-control-afb.so)
-set(CTL_BUILD_PATH "--binding=../../afb-controller/build/afb-source/afb-control-afb.so")
+  set(CTL_BUILD_PATH "--binding=../../afb-controller/build/afb-source/afb-control-afb.so")
 endif()
 set(CLOSING_MESSAGE "Debug from afb-daemon --port=1234 ${MONITORING_ALIAS} --ldpaths=. ${CTL_BUILD_PATH} --workdir=. --roothttp=../htdocs --tracereq=common --token= --verbose ")
 set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install ${PROJECT_NAME}.wgt")

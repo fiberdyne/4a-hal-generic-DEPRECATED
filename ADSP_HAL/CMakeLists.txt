@@ -21,16 +21,16 @@ PROJECT_TARGET_ADD(hal-fddsp)
 
     # Define project Targets
     ADD_LIBRARY(hal-fddsp MODULE 
-    hal_fd_dsp.c 
-    dsphal_utility.c dsphal_utility.h
+                hal_fd_dsp.c 
+                dsphal_utility.c
+                dsphal_utility.h
     )
 
     # Binder exposes a unique public entry point
-    SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-	PREFIX "afb-"
-        LABELS "BINDING"
-	LINK_FLAGS  ${BINDINGS_LINK_FLAG}
-        OUTPUT_NAME ${TARGET_NAME}
+    SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES PREFIX "afb-"
+                          LABELS "BINDING"
+                          LINK_FLAGS  ${BINDINGS_LINK_FLAG}
+                          OUTPUT_NAME ${TARGET_NAME}
     )
 
     # Library dependencies (include updates automatically)
@@ -38,9 +38,4 @@ PROJECT_TARGET_ADD(hal-fddsp)
         hal-utilities-4a
         afb-utilities
         ${link_libraries}
-    )
-
-    # Define properties to expose when others use this target
-    TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME}
-       PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/ucs2-vol/inc
     )
