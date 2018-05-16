@@ -19,26 +19,16 @@
 
 
 ##################################################
-# FDDSP Config file
+# 4A HAL Generic config file
 ##################################################
 
-PROJECT_TARGET_ADD(fddsp_config)
+PROJECT_TARGET_ADD(hal-generic-config)
 
-    file(GLOB SOURCE_FILES "*.json")
+  file(GLOB CONF_FILES "*.json")
 
-    add_custom_target(${TARGET_NAME}
-       DEPENDS  ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
-    )
+  add_input_files("${CONF_FILES}")
 
-    add_custom_command(
-       DEPENDS  ${SOURCE_FILES}
-       OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
-       COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
-       COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
-       COMMAND cp -r ${SOURCE_FILES} ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}
-    )
-
-    SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-	LABELS "DATA"
-	OUTPUT_NAME ${TARGET_NAME}
-    )
+  SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
+  LABELS "BINDING-CONFIG"
+  OUTPUT_NAME ${TARGET_NAME}
+  )

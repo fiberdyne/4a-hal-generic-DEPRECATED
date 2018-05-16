@@ -39,3 +39,6 @@ PROJECT_TARGET_ADD(hal-fddsp)
         afb-utilities
         ${link_libraries}
     )
+
+    # make sure config is copied before starting
+    add_dependencies(${TARGET_NAME} hal-generic-config)
