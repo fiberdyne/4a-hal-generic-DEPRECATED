@@ -98,7 +98,7 @@ set(COMPILE_OPTIONS
 -Wno-unused-parameter
 -Wno-sign-compare
 -Wno-sign-conversion
--Werror=maybe-uninitialized
+#-Werror=maybe-uninitialized
 -Werror=implicit-function-declaration
 -ffunction-sections
 -fdata-sections
@@ -208,6 +208,12 @@ set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install 
 # When Present LUA is used by the controller
 # ---------------------------------------------------------------
 set(CONTROL_SUPPORT_LUA 1 CACHE BOOL "Active or not LUA Support")
+list(APPEND PKG_REQUIRED_LIST lua>=5.3)
+add_definitions(-DCONTROL_PLUGIN_PATH="${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/lib/plugins:${CMAKE_BINARY_DIR}/package/lib/plugins")
+add_definitions(-DCONTROL_CONFIG_PATH="${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/etc:${CMAKE_BINARY_DIR}/package/etc")
+add_definitions(-DCONTROL_LUA_PATH="${CMAKE_SOURCE_DIR}/conf.d/project/lua.d:${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/data")
+add_definitions(-DCTL_PLUGIN_MAGIC=987456123)
+#add_definitions(-DUSE_API_DYN=1 -DAFB_BINDING_VERSION=dyn)
 
 # Optional schema validator about now only XML, LUA and JSON
 # are supported

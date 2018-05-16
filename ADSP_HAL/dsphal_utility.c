@@ -33,7 +33,7 @@ json_object *loadHalConfig(void)
     int fd;
     json_object *config = NULL;
     char *configJsonStr;
-    char *bindingDirPath = GetBindingDirPath();
+    char *bindingDirPath = GetBindingDirPath(NULL);
 
     AFB_NOTICE("Binding path: %s", bindingDirPath);
     snprintf(filename, MAX_FILENAME_LEN, "%s/var/%s", bindingDirPath, "onload-config-0001.json");

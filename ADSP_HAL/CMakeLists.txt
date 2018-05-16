@@ -36,7 +36,7 @@ PROJECT_TARGET_ADD(hal-fddsp)
     # Library dependencies (include updates automatically)
     TARGET_LINK_LIBRARIES(${TARGET_NAME}
         hal-utilities-4a
-        afb-utilities
+        afb-helpers
         ${link_libraries}
     )
 
