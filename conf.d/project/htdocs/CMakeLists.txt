@@ -42,14 +42,14 @@
 #	OUTPUT_NAME ${TARGET_NAME}
 #    )
 
-PROJECT_TARGET_ADD(htdocs)
+PROJECT_TARGET_ADD(hal-generic-html5)
 
     file(GLOB SOURCE_FILES "*.html" "*.js" "*.jpg" "*.css")
 
-	add_input_files("${SOURCE_FILES}")
+    add_input_files("${SOURCE_FILES}")
 
     SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-	LABELS "HTDOCS"
-	OUTPUT_NAME ${TARGET_NAME}
+    LABELS "HTDOCS" 
+    OUTPUT_NAME ${TARGET_NAME}
     )
 

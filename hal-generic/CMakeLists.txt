@@ -39,4 +39,6 @@ PROJECT_TARGET_ADD(hal-generic)
     )
 
     # make sure config is copied before starting
-    add_dependencies(${TARGET_NAME} hal-generic-config)
+    add_dependencies(${TARGET_NAME}
+                     ${TARGET_NAME}-config
+                     ${TARGET_NAME}-html5)
