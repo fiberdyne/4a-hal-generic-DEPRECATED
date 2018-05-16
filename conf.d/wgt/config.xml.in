@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <widget xmlns="http://www.w3.org/ns/widgets" id="@PROJECT_NAME@" version="@PROJECT_VERSION@">
-  <name>Fiberdyne DSP</name>
+  <name>4A HAL Generic</name>
   <icon src="@PROJECT_ICON"/>
   <content src="@WIDGET_ENTRY_POINT@" type="@WIDGET_TYPE@"/>
   <description>@PROJECT_DESCRIPTION@</description>
@@ -8,7 +8,7 @@
   <license>@PROJECT_LICENSE@</license>
 
   <feature name="urn:AGL:widget:provided-api">
-    <param name="hal-fddsp" value="ws" />
+    <param name="4a-hal-generic" value="ws" />
   </feature>
   
   <feature name="urn:AGL:widget:required-api">

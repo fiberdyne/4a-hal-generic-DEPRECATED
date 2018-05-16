@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef HAL_DSPUTILITY_H
-#define HAL_DSPUTILITY_H
+#ifndef HAL_GENERIC_UTILITY_H
+#define HAL_GENERIC_UTILITY_H
 
 #include <stdio.h>
 
@@ -33,16 +33,16 @@
 
 typedef enum
 {
-  DSPHAL_OK,
-  DSPHAL_FAIL
-} DSPHAL_ERRCODE;
+  HAL_OK,
+  HAL_FAIL
+} HAL_ERRCODE;
 
 PUBLIC json_object *loadHalConfig(void);
-DSPHAL_ERRCODE initialize_sound_card(json_object *configJ);
+HAL_ERRCODE initialize_sound_card(json_object *configJ);
 
 PUBLIC json_object *getMap(json_object *cfgZones, const char *chanType);
 PUBLIC json_object *generateCardProperties(json_object *cfgCardsJ);
 PUBLIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ);
 PUBLIC json_object *getConfigurationString(json_object *configJ);
 
-#endif /* HAL_DSPUTILITY_H */
+#endif /* HAL_GENERIC_UTILITY_H */

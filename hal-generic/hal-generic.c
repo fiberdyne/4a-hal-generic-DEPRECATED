@@ -18,7 +18,7 @@
 
 #define _GNU_SOURCE
 #include <string.h>
-#include "dsphal_utility.h"
+#include "hal-generic-utility.h"
 #include "hal-interface.h"
 #include "wrap-json.h"
 
@@ -99,18 +99,18 @@ STATIC alsaHalSndCardT alsaHalSndCard = {
     .volumeCB = NULL, /* use default volume normalization function */
 };
 
-/* initializes ALSA sound card, FDDSP API */
-STATIC int fddsp_service_init()
+/* initializes ALSA sound card using hal plugin API */
+STATIC int hal_generic_init()
 {
     int err = 0;
     json_object *configJ;
 
-    AFB_NOTICE("Initializing HAL-FDDSP");
+    AFB_NOTICE("Initializing 4a-hal-generic");
 
     // Get the config file.
     configJ = loadHalConfig();
 
-    // Check that our dsp plugin is present. If so, we can initialize it.
+    // Check that hal plugin is present. If so, we can initialize it.
     err = afb_daemon_require_api("fd-dsp-hifi2", 1);
     if (err)
     {
@@ -118,7 +118,7 @@ STATIC int fddsp_service_init()
         goto OnErrorExit;
     }
 
-    // If the dsp plugin is present, we need to configure our custom sound card to provide all the required interfaces.
+    // If the hal plugin is present, we need to configure our custom sound card to provide all the required interfaces.
     // This will load the configuration json file, and set up the sound card
     AFB_NOTICE("Start Initialize of sound card");
     err = initialize_sound_card(configJ);
@@ -138,14 +138,14 @@ STATIC int fddsp_service_init()
 
     AFB_NOTICE(".. Initializing Complete!");
 OnErrorExit:
-    AFB_NOTICE("fddsp_service_init() - end");
+    AFB_NOTICE("hal_generic_init() - end");
     return err;
 }
 
 // This receive all event this binding subscribe to
-PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event)
+PUBLIC void hal_generic_event_cb(const char *evtname, json_object *j_event)
 {
-    AFB_NOTICE("fddsp_event_cb: Event Received (%s)", evtname);
+    AFB_NOTICE("hal_generic_event_cb: Event Received (%s)", evtname);
     if (strncmp(evtname, "alsacore/", 9) == 0)
     {
         halServiceEvent(evtname, j_event);
@@ -154,25 +154,25 @@ PUBLIC void fddsp_event_cb(const char *evtname, json_object *j_event)
 
     if (strncmp(evtname, "fd-dsp-hifi2/", 13) == 0)
     {
-        AFB_NOTICE("fddsp_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
+        AFB_NOTICE("hal_generic_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
 
         return;
     }
 
     if (strncmp(evtname, "hal-fddsp/", 6) == 0)
     {
-        AFB_NOTICE("fddsp_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
+        AFB_NOTICE("hal_generic_event_cb: evtname=%s, event=%s", evtname, json_object_get_string(j_event));
 
         return;
     }
 
-    AFB_NOTICE("fddsp_event_cb: UNHANDLED EVENT, evtname=%s, event=%s", evtname, json_object_get_string(j_event));
+    AFB_NOTICE("hal_generic_event_cb: UNHANDLED EVENT, evtname=%s, event=%s", evtname, json_object_get_string(j_event));
 }
 
 /* API prefix should be unique for each snd card */
 PUBLIC const struct afb_binding_v2 afbBindingV2 = {
-    .api = "hal-fddsp",
-    .init = fddsp_service_init,
+    .api = "4a-hal-generic",
+    .init = hal_generic_init,
     .verbs = halServiceApi,
-    .onevent = fddsp_event_cb,
+    .onevent = hal_generic_event_cb,
 };

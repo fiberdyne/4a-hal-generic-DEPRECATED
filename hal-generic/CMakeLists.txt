@@ -17,13 +17,13 @@
 ###########################################################################
 
 # Add target to project dependency list
-PROJECT_TARGET_ADD(hal-fddsp)
+PROJECT_TARGET_ADD(hal-generic)
 
     # Define project Targets
-    ADD_LIBRARY(hal-fddsp MODULE 
-                hal_fd_dsp.c 
-                dsphal_utility.c
-                dsphal_utility.h
+    ADD_LIBRARY(hal-generic MODULE 
+                hal-generic.c 
+                hal-generic-utility.c
+                hal-generic-utility.h
     )
 
     # Binder exposes a unique public entry point

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include "dsphal_utility.h"
+#include "hal-generic-utility.h"
 #include "hal-interface.h"
 #include "wrap-json.h"
 #include <string.h>
@@ -51,7 +51,7 @@ json_object *loadHalConfig(void)
     return config;
 }
 
-DSPHAL_ERRCODE initialize_sound_card(json_object *configJ)
+HAL_ERRCODE initialize_sound_card(json_object *configJ)
 {
     json_object *configurationStringJ = NULL;
     json_object *cfgResultJ = NULL;
@@ -78,7 +78,7 @@ DSPHAL_ERRCODE initialize_sound_card(json_object *configJ)
         AFB_NOTICE("Status: %s, Message: %s, ErrCode: %d", strStatus, message, errCode);
 
         // Break out and fail here.
-        return DSPHAL_FAIL;
+        return HAL_FAIL;
     } else {
         int errCode = -1;
         wrap_json_unpack(cfgResultJ, "{s:{s:i,s:s}}", "response", "errcode", &errCode, "message", &message);
@@ -86,7 +86,7 @@ DSPHAL_ERRCODE initialize_sound_card(json_object *configJ)
     }
 
     // No error found, return success to afb init
-    return DSPHAL_OK;
+    return HAL_OK;
 }
 
 PUBLIC json_object *getMap(json_object *cfgZones, const char *zoneName)

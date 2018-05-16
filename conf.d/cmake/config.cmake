@@ -18,11 +18,11 @@
 
 # Project Info
 # ------------------
-set(PROJECT_NAME afb-hal-fddsp)
+set(PROJECT_NAME 4a-hal-generic)
 set(PROJECT_VERSION "0.1")
-set(PROJECT_PRETTY_NAME "AAAA DSP HAL")
-set(PROJECT_DESCRIPTION "Expose HAL for FD DSP")
-set(PROJECT_URL "https://github.com/iotbzh/audio-bindings")
+set(PROJECT_PRETTY_NAME "4A HAL Generic")
+set(PROJECT_DESCRIPTION "Expose a generic HAL for 4A (AGL Advanced Audio Architecture)")
+set(PROJECT_URL "https://github.com/fiberdyne/4a-hal-generic")
 set(PROJECT_ICON "icon.png")
 set(PROJECT_AUTHOR "OSHANNESSY, James")
 set(PROJECT_AUTHOR_MAIL "james.oshannessy@fiberdyne.com.au")
@@ -165,7 +165,7 @@ set(WIDGET_TYPE application/vnd.agl.service)
 # This is the file that will be executed, loaded,
 # at launch time by the application framework.
 #
-set(WIDGET_ENTRY_POINT lib/afb-hal-fddsp.so)
+set(WIDGET_ENTRY_POINT lib/4a-hal-generic.so)
 
 # Optional dependencies order
 # ---------------------------
