@@ -19,8 +19,8 @@
 #include "hal-generic-utility.h"
 #include "hal-interface.h"
 #include "wrap-json.h"
-#include <string.h>
 #include "filescan-utils.h"
+
 #include <sys/mman.h>
 #include <sys/stat.h>
 

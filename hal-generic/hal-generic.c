@@ -17,10 +17,8 @@
  */
 
 #define _GNU_SOURCE
-#include <string.h>
 #include "hal-generic-utility.h"
 #include "hal-interface.h"
-#include "wrap-json.h"
 
 #define ALSA_CARD_NAME "xfalsa"
 //#define ALSA_DEVICE_ID "ALC887-VD Analog"
@@ -64,8 +62,7 @@ STATIC halVolRampT volRampMultimedia = {
     .delay = 100 * 1000,
     .stepDown = 1,
     .stepUp = 1,
-}
-;
+};
 
 #define PCM_Master_Bass 1000
 #define PCM_Master_Mid 1001
