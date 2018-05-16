@@ -16,17 +16,7 @@
 # limitations under the License.
 ###########################################################################
 
-##################################################
-# 4A HAL Generic config file
-##################################################
 
-PROJECT_TARGET_ADD(hal-generic-config)
-
-  file(GLOB CONF_FILES "*.json")
-
-  add_input_files("${CONF_FILES}")
-
-  SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-  LABELS "BINDING-CONFIG"
-  OUTPUT_NAME ${TARGET_NAME}
-  )
+# Include any directory not starting with _
+# -----------------------------------------------------
+PROJECT_SUBDIRS_ADD(${PROJECT_SRC_DIR_PATTERN})

@@ -41,7 +41,7 @@ set(PROJECT_APP_TEMPLATES_DIR "conf.d/app-templates")
 # set(PROJECT_RESOURCES "data")
 
 # Which directories inspect to find CMakeLists.txt target files
-set(PROJECT_SRC_DIR_PATTERN "[^_]*")
+# set(PROJECT_SRC_DIR_PATTERN "[^_]*")
 
 # Compilation Mode (DEBUG, RELEASE)
 # ----------------------------------
@@ -70,9 +70,8 @@ set (gcc_minimal_version 4.9)
 set (PKG_REQUIRED_LIST
 	json-c
 	libsystemd>=222
-	afb-daemon
+	afb-daemon>=4.0
 	libmicrohttpd>=0.9.55
-	libafbwsc
 	alsa>=1.1.2
 )
 
@@ -83,7 +82,7 @@ set (PKG_REQUIRED_LIST
 
 # Customize link option
 # -----------------------------
-list(APPEND link_libraries -lpthread -lm)
+list(APPEND link_libraries afb-helpers hal-utilities-4a)
 
 # Compilation options definition
 # Use CMake generator expressions to specify only for a specific language
@@ -103,11 +102,6 @@ set(COMPILE_OPTIONS
 -ffunction-sections
 -fdata-sections
 -fPIC
-# Personal compilation options
--DMAX_SND_CARD=16        # should be more than enough even in luxury vehicule
--DMAX_LINEAR_DB_SCALE=24 # until 24db volume normalisation use a simple linear scale
--DTLV_BYTE_SIZE=256      # Alsa use 4096 as default but 256 should fit most sndcards
--DCONTROL_MAXPATH_LEN=255
  CACHE STRING "Compilation flags")
 #set(C_COMPILE_OPTIONS "" CACHE STRING "Compilation flags for C language.")
 #set(CXX_COMPILE_OPTIONS "" CACHE STRING "Compilation flags for C++ language.")
@@ -132,11 +126,21 @@ set(COMPILE_OPTIONS
 # -O2
 # CACHE STRING "Compilation flags for RELEASE build type.")
 
+# When Present LUA is used by the controller
+# ---------------------------------------------------------------
+set(CONTROL_SUPPORT_LUA 1 CACHE BOOL "Active or not LUA Support")
+list(APPEND PKG_REQUIRED_LIST lua>=5.3)
+add_definitions(-DCONTROL_PLUGIN_PATH="${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/lib/plugins:${CMAKE_BINARY_DIR}/package/lib/plugins")
+add_definitions(-DCONTROL_CONFIG_PATH="${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/etc:${CMAKE_BINARY_DIR}/package/etc")
+add_definitions(-DCONTROL_LUA_PATH="${CMAKE_SOURCE_DIR}/conf.d/project/lua.d:${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/data")
+add_definitions(-DCTL_PLUGIN_MAGIC=987456123)
+#add_definitions(-DUSE_API_DYN=1 -DAFB_BINDING_VERSION=dyn)
+
+
 # (BUG!!!) as PKG_CONFIG_PATH does not work [should be an env variable]
 # ---------------------------------------------------------------------
 set(CMAKE_PREFIX_PATH ${CMAKE_INSTALL_PREFIX}/lib64/pkgconfig ${CMAKE_INSTALL_PREFIX}/lib/pkgconfig)
 set(LD_LIBRARY_PATH ${CMAKE_INSTALL_PREFIX}/lib64 ${CMAKE_INSTALL_PREFIX}/lib)
-set(HTTPDIR htdocs CACHE PATH "Directory holding HTML5 files")
 
 # Optional location for config.xml.in
 # -----------------------------------
@@ -195,25 +199,8 @@ set(AFB_REMPORT "1234" CACHE PATH "Default binder listening port")
 
 # Print a helper message when every thing is finished
 # ----------------------------------------------------
-if(IS_DIRECTORY $ENV{HOME}/opt/afb-monitoring)
-  set(MONITORING_ALIAS "--alias=/monitoring:$ENV{HOME}/opt/afb-monitoring")
-endif()
-
-if(EXISTS ${CMAKE_SOURCE_DIR}/../afb-controller/build/afb-source/afb-control-afb.so)
-  set(CTL_BUILD_PATH "--binding=../../afb-controller/build/afb-source/afb-control-afb.so")
-endif()
 set(CLOSING_MESSAGE "Debug from afb-daemon --port=1234 ${MONITORING_ALIAS} --ldpaths=. ${CTL_BUILD_PATH} --workdir=. --roothttp=../htdocs --tracereq=common --token= --verbose ")
 set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install ${PROJECT_NAME}.wgt")
-
-# When Present LUA is used by the controller
-# ---------------------------------------------------------------
-set(CONTROL_SUPPORT_LUA 1 CACHE BOOL "Active or not LUA Support")
-list(APPEND PKG_REQUIRED_LIST lua>=5.3)
-add_definitions(-DCONTROL_PLUGIN_PATH="${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/lib/plugins:${CMAKE_BINARY_DIR}/package/lib/plugins")
-add_definitions(-DCONTROL_CONFIG_PATH="${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/etc:${CMAKE_BINARY_DIR}/package/etc")
-add_definitions(-DCONTROL_LUA_PATH="${CMAKE_SOURCE_DIR}/conf.d/project/lua.d:${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/data")
-add_definitions(-DCTL_PLUGIN_MAGIC=987456123)
-#add_definitions(-DUSE_API_DYN=1 -DAFB_BINDING_VERSION=dyn)
 
 # Optional schema validator about now only XML, LUA and JSON
 # are supported

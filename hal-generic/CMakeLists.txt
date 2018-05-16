@@ -20,14 +20,14 @@
 PROJECT_TARGET_ADD(hal-generic)
 
     # Define project Targets
-    ADD_LIBRARY(hal-generic MODULE 
+    ADD_LIBRARY(${TARGET_NAME} MODULE 
                 hal-generic.c 
                 hal-generic-utility.c
                 hal-generic-utility.h
     )
 
     # Binder exposes a unique public entry point
-    SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES PREFIX "afb-"
+    SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES PREFIX ""
                           LABELS "BINDING"
                           LINK_FLAGS  ${BINDINGS_LINK_FLAG}
                           OUTPUT_NAME ${TARGET_NAME}
@@ -35,8 +35,6 @@ PROJECT_TARGET_ADD(hal-generic)
 
     # Library dependencies (include updates automatically)
     TARGET_LINK_LIBRARIES(${TARGET_NAME}
-        hal-utilities-4a
-        afb-helpers
         ${link_libraries}
     )
 
