@@ -26,6 +26,11 @@
 
 #define MAX_FILENAME_LEN 255
 
+// Local function declarations
+PUBLIC STATIC json_object *generateCardProperties(json_object *cfgCardsJ);
+PUBLIC STATIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ);
+PUBLIC STATIC json_object *getConfigurationString(json_object *configJ);
+
 json_object *loadHalConfig(void)
 {
     char filename[MAX_FILENAME_LEN];
@@ -89,7 +94,7 @@ HAL_ERRCODE initialize_sound_card(json_object *configJ)
     return HAL_OK;
 }
 
-PUBLIC json_object *getMap(json_object *cfgZones, const char *zoneName)
+PUBLIC STATIC json_object *getMap(json_object *cfgZones, const char *zoneName)
 {
     int idxZone;
     json_object *zoneMapping = 0;
@@ -142,7 +147,7 @@ PUBLIC json_object *generateCardProperties(json_object *cfgCardsJ)
     return cfgCardPropsJ;
 }
 
-PUBLIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ)
+PUBLIC STATIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ)
 {
     //
     // Construct the stream map by looping over each stream and extracting the mapping.
@@ -185,7 +190,7 @@ PUBLIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfg
     return cfgStreamMapJ;
 }
 
-PUBLIC json_object *getConfigurationString(json_object *configJ)
+PUBLIC STATIC json_object *getConfigurationString(json_object *configJ)
 {
     json_object *configurationString;
     const char *cfgSchema;

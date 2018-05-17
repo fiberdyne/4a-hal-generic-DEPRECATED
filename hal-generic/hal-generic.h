@@ -16,14 +16,18 @@
  * limitations under the License.
  */
 
-#ifndef HAL_GENERIC_UTILITY_H
-#define HAL_GENERIC_UTILITY_H
+#ifndef HAL_GENERIC_H
+#define HAL_GENERIC_H
 
-#include "hal-generic.h"
+#ifndef PUBLIC
+# define PUBLIC
+#endif
+#define STATIC static
 
-#include <json-c/json.h>
+typedef enum
+{
+  HAL_OK,
+  HAL_FAIL
+} HAL_ERRCODE;
 
-PUBLIC json_object *loadHalConfig(void);
-HAL_ERRCODE initialize_sound_card(json_object *configJ);
-
-#endif /* HAL_GENERIC_UTILITY_H */
+#endif // HAL_GENERIC_H

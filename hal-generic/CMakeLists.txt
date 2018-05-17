@@ -21,6 +21,7 @@ PROJECT_TARGET_ADD(hal-generic)
 
     # Define project Targets
     ADD_LIBRARY(${TARGET_NAME} MODULE 
+                hal-generic.h
                 hal-generic.c 
                 hal-generic-utility.c
                 hal-generic-utility.h
