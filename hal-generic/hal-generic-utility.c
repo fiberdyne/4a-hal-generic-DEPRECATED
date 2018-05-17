@@ -21,9 +21,6 @@
 #include "wrap-json.h"
 #include "filescan-utils.h"
 
-#include <sys/mman.h>
-#include <sys/stat.h>
-
 #define MAX_FILENAME_LEN 255
 
 // Local function declarations
@@ -34,24 +31,19 @@ PUBLIC STATIC json_object *getConfigurationString(json_object *configJ);
 json_object *loadHalConfig(void)
 {
     char filename[MAX_FILENAME_LEN];
-    struct stat st;
-    int fd;
     json_object *config = NULL;
-    char *configJsonStr;
     char *bindingDirPath = GetBindingDirPath(NULL);
 
     AFB_NOTICE("Binding path: %s", bindingDirPath);
     snprintf(filename, MAX_FILENAME_LEN, "%s/etc/%s", bindingDirPath, "onload-config-0001.json");
     AFB_NOTICE("path: %s", filename);
 
-    fd = open(filename, O_RDONLY);
-    if (fd == -1)
-        perror("open");
-    if (fstat(fd, &st) == -1)
-        perror("fstat");
-    configJsonStr = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    close(fd);
-    config = json_tokener_parse(configJsonStr);
+    config = json_object_from_file(filename);
+    if (!config)
+    {
+      AFB_ERROR("Couldn't load file: %s", filename);
+      return NULL;
+    }
 
     return config;
 }
