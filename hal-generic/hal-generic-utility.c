@@ -36,7 +36,7 @@ json_object *loadHalConfig(void)
     char *bindingDirPath = GetBindingDirPath(NULL);
 
     AFB_NOTICE("Binding path: %s", bindingDirPath);
-    snprintf(filename, MAX_FILENAME_LEN, "%s/var/%s", bindingDirPath, "onload-config-0001.json");
+    snprintf(filename, MAX_FILENAME_LEN, "%s/etc/%s", bindingDirPath, "onload-config-0001.json");
     AFB_NOTICE("path: %s", filename);
 
     fd = open(filename, O_RDONLY);

@@ -168,7 +168,7 @@ set(WIDGET_TYPE application/vnd.agl.service)
 # This is the file that will be executed, loaded,
 # at launch time by the application framework.
 #
-set(WIDGET_ENTRY_POINT lib/4a-hal-generic.so)
+set(WIDGET_ENTRY_POINT lib/hal-generic.so)
 
 # Optional dependencies order
 # ---------------------------
