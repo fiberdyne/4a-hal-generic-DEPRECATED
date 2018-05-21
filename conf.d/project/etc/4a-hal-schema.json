@@ -136,15 +136,12 @@
       "type": "object",
       "description": "Defines a stream sink",
       "properties": {
-        "channels": {
-          "type": "integer",
-          "description": "An integer indicating the number of channels this stream has. This must match the associated zone's channel count" },
         "zone": {
           "type": "string",
           "description": "A string indicating the zone that this stream is assigned to"
         }
-      }
-    },
+        }
+      },
     "mapping": {
       "type": "array",
       "description": "An array of outputs to be mapped to the nth input. This array's index within it's parent array corresponds to n",

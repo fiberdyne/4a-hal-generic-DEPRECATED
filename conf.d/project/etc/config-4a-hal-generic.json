@@ -97,7 +97,6 @@
       "uid": "nav",
       "role": "Navigation",
       "sink": {
-        "channels": 1,
         "zone": "DriverOnly"
       },
       "ctls": {
@@ -108,7 +107,6 @@
       "uid": "phone",
       "role": "Phone",
       "sink": {
-        "channels": 1,
         "zone": "DriverOnly"
       },
       "ctls": {
@@ -119,7 +117,6 @@
       "uid": "radio",
       "role": "Radio",
       "sink": {
-        "channels": 2,
         "zone": "FrontOnly"
       },
       "ctls": {
@@ -130,7 +127,6 @@
       "uid": "multimedia",
       "role": "Multimedia",
       "sink": {
-        "channels": 6,
         "zone": "FiveOne"
       },
       "ctls": {
