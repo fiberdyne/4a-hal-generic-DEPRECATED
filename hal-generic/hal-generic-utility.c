@@ -19,19 +19,24 @@
 #include "hal-generic-utility.h"
 #include "hal-interface.h"
 #include "wrap-json.h"
-#include "filescan-utils.h"
 
-#define MAX_FILENAME_LEN 255
-
-static json_object *_zonesJ = NULL;   // Zones JSON section from conf file
-static json_object *_cardpropsJ = NULL;   // Cardprops JSON config
+static json_object *_zonesJ = NULL;     // Zones JSON section from conf file
+static json_object *_cardpropsJ = NULL; // Cardprops JSON config
 static json_object *_streammapJ = NULL; // Streammap JSON config
 
 // Local function declarations
-PUBLIC STATIC json_object *generateCardProperties(json_object *cfgCardsJ);
-PUBLIC STATIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ);
-PUBLIC STATIC json_object *getMap(json_object *cfgZones, const char *zoneName);
+PUBLIC STATIC json_object *generateCardProperties(json_object *cardsJ);
+PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object *zonesJ);
+PUBLIC STATIC json_object *getMap(json_object *zonesJ, const char *zoneName);
 
+
+
+/////////////////////////////////////////////////////////////////////////
+//  APP CONTROLLER SECTION CALLBACKS
+/////////////////////////////////////////////////////////////////////////
+/*
+ * @brief 'cards' section callback for app controller
+ */
 int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *cardsJ)
 {
   int err = 0;
@@ -42,23 +47,29 @@ int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *cardsJ)
   return err;
 }
 
-// Must come AFTER zone config!!
+/*
+ * @brief 'streams' section callback for app controller
+ *         Must come AFTER zone config!!
+ */
 int StreamConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *streamsJ)
 {
   int err = 0;
 
   AFB_NOTICE("Stream Config");
-  _streammapJ = generateStreamMap(streamsJ, _zonesJ);
+      _streammapJ = generateStreamMap(streamsJ, _zonesJ);
 
   return err;
 }
 
+/*
+ * @brief 'zones' section callback for app controller
+ */
 int ZoneConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *zonesJ)
 {
   int err = 0;
 
   AFB_NOTICE("Zone Config");
-  _zonesJ = zonesJ;
+    _zonesJ = zonesJ;
 
   return err;
 }
@@ -113,21 +124,21 @@ PUBLIC STATIC json_object *getMap(json_object *cfgZones, const char *zoneName)
     //AFB_NOTICE("%s, %s", zoneName, json_object_get_string(cfgZones));
 
     for (idxZone = 0; idxZone < json_object_array_length(cfgZones); idxZone++)
-    {
-        char *zoneUid = "";
-        char *zoneType = "";
+  {
+    char *zoneUid = "";
+    char *zoneType = "";
 
         json_object *currZone = json_object_array_get_idx(cfgZones, idxZone);
         wrap_json_unpack(currZone, "{s:s,s:s,s:o}",
                          "uid", &zoneUid, "type", &zoneType, "mapping", &zoneMapping);
 
-        //AFB_NOTICE("%s, %s", zoneUid, zoneType);
-        if (strcmp(zoneUid, zoneName) == 0)
-        {
-            //AFB_NOTICE("%s",json_object_get_string(zoneMapping));
+    //AFB_NOTICE("%s, %s", zoneUid, zoneType);
+    if (strcmp(zoneUid, zoneName) == 0)
+    {
+      //AFB_NOTICE("%s",json_object_get_string(zoneMapping));
             return zoneMapping;
-        }
     }
+  } 
 
     wrap_json_pack(&zoneMapping, "[]");
     return zoneMapping;
@@ -135,18 +146,18 @@ PUBLIC STATIC json_object *getMap(json_object *cfgZones, const char *zoneName)
 
 PUBLIC json_object *generateCardProperties(json_object *cfgCardsJ)
 {
-    AFB_NOTICE("Generating Card Properties");
-    json_object *cfgCardPropsJ;
-    wrap_json_pack(&cfgCardPropsJ, "{}");
+  AFB_NOTICE("Generating Card Properties");
+  json_object *cfgCardPropsJ;
+  wrap_json_pack(&cfgCardPropsJ, "{}");
     json_object *currCard = json_object_array_get_idx(cfgCardsJ, 0);
     if (currCard)
-    {
-        json_object *cardChannels = 0;
+  {
+    json_object *cardChannels = 0;
 
         wrap_json_unpack(currCard, "{s:o}", "channels", &cardChannels);
-        if (cardChannels)
-        {
-            json_object *cardSource = 0, *cardSink = 0;
+    if (cardChannels)
+    {
+      json_object *cardSource = 0, *cardSink = 0;
             // Abstract sink and source from the card channel definition
             wrap_json_unpack(cardChannels, "{s:o,s:o}", "sink", &cardSink, "source", &cardSource);
 
