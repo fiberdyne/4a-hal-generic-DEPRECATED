@@ -140,8 +140,20 @@
           "type": "string",
           "description": "A string indicating the zone that this stream is assigned to"
         }
+      },
+      "required": "zone"
+    },
+    "stream-source": {
+      "type": "object",
+      "description": "Defines a stream source",
+      "properties": {
+        "zone": {
+          "type": "string",
+          "description": "A string indicating the zone that this stream is assigned to"
         }
       },
+      "required": "zone"
+    },
     "mapping": {
       "type": "array",
       "description": "An array of outputs to be mapped to the nth input. This array's index within it's parent array corresponds to n",
@@ -197,7 +209,7 @@
           "items": { "$ref": "#/definitions/mapping" }
         }
       },
-      "required": [ "uid", "mapping" ]
+      "required": [ "uid", "type", "mapping" ]
     },
     "stream": {
       "type": "object",
@@ -206,11 +218,12 @@
         "uid": { "$ref": "ctl-schema.json#/definitions/uid" },
         "role": { "$ref": "#/definitions/role" },
         "sink": { "$ref": "#/definitions/stream-sink" },
+        "source": { "$ref": "#/definitions/stream-source" },
         "ctls": {
           "$ref": "ctl-schema.json#/definitions/section"
         }
       },
-      "required": [ "role" ]
+      "required": [ "uid", "role", "sink" ]
     }
   }
 }
