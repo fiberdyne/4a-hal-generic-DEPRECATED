@@ -1,0 +1,40 @@
+{
+  "$schema": "./4a-hal-schema.json",
+  "ctls": {
+    "uid": "Master",
+    "volume": {
+      "uid": "Master Playback Volume",
+      "value": 100
+    },
+    "bass": {
+      "uid": "Master Bass Playback Volume",
+      "value": 50,
+      "minval": 0,
+      "maxval": 100
+    },
+    "treble": {
+      "uid": "Master Treble Playback Volume",
+      "value": 50,
+      "minval": 0,
+      "maxval": 100
+    },
+    "mid": {
+      "uid": "Master Mid Playback Volume",
+      "value": 50,
+      "minval": 0,
+      "maxval": 100
+    },
+    "fade": {
+      "uid": "Master Playback Fade",
+      "value": 0,
+      "minval": -15,
+      "maxval": 15
+    },
+    "balance": {
+      "uid": "Master Playback Balance",
+      "value": 0,
+      "minval": -15,
+      "maxval": 15
+    }
+  }
+}

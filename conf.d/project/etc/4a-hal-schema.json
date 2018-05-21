@@ -1,0 +1,218 @@
+{
+  "id": "file:://4a-hal-schema.json#",
+  "$schema": "http://iot.bzh/download/public/schema/json/ctl-schema.json#",
+  "description": "4A HAL configuration schema",
+
+  "type": "object",
+
+  "properties": {
+    "cards": {
+      "oneOf":[
+        {
+          "type": "array",
+          "items": {"$ref": "#/definitions/card"}
+        },
+        {
+          "$ref": "#/definitions/card"
+        }
+      ],
+      "description": "Defines a list of ALSA cards"
+    },
+    "zones": {
+      "oneOf":[
+        {
+          "type": "array",
+          "items": {"$ref": "#/definitions/zone"}
+        },
+        {
+          "$ref": "#/definitions/zone"
+        }
+      ],
+      "description": "Defines a list of zones for mapping"
+    },
+    "master": {
+      "type": "object",
+      "description": "An object defining the audio master.",
+      "properties": {
+        "ctls": {
+          "$ref": "ctl-schema.json#/definitions/section"
+        }
+      }
+    },
+    "streams": {
+      "oneOf":[
+        {
+          "type": "array",
+          "items": {"$ref": "#/definitions/stream"}
+        },
+        {
+          "$ref": "#/definitions/stream"
+        }
+      ],
+      "description": "Defines a list of streams"
+    }
+  },
+
+  "definitions": {
+    "role": {
+      "type": "string",
+      "enum": [ "Master", "Radio", "Multimedia", "Phone", "Navigation",
+                "Emergency", "Warning", "Video", "Streaming", "Fallback",
+                "CustomHigh", "CustomMedium", "CustomLow"
+              ],
+      "description": "An enum string defining an audio stream role. Options are: Master, Radio, Multimedia, Phone, Navigation, Emergency, Warning, Video, Streaming, Fallback, CustomHigh, CustomMedium, or CustomLow" 
+    },
+    "value": {
+      "type": [ "integer" ],
+      "description": "The initial value set to."
+    },
+    "minval": {
+      "type": [ "integer" ],
+      "description": "The minimum value allowed."
+    },
+    "maxval": {
+      "type": [ "integer" ],
+      "description": "The maximum value allowed."
+    },
+    "count": {
+      "type": [ "integer" ],
+      "description": ""
+    },
+    "step": {
+      "type": [ "integer" ],
+      "description": "The step value for ramping.",
+      "default": 1
+    },
+    "volramp": {
+      "type": "object",
+      "description": "Defines a volume ramp ALSA control",
+      "properties": {
+        "uid": { "$ref": ""},
+        "value": { "$ref": "#/definitions/value" },
+        "minval": { "$ref": "#/definitions/minval" },
+        "maxval": { "$ref": "#/definitions/maxval" },
+        "step": { "$ref": "#/definitions/step" }
+      },
+      "required": [ "uid" ]
+    },
+    "volume": {
+      "type": "object",
+      "description": "Defines a volume ALSA control",
+      "properties": {
+        "uid": { "$ref": ""},
+        "value": { "$ref": "#/definitions/value" },
+        "minval": { "$ref": "#/definitions/minval" },
+        "maxval": { "$ref": "#/definitions/maxval" },
+        "count": { "$ref": "#/definitions/count" }
+      },
+      "required": [ "uid" ]
+    },
+    "ctls": {
+      "type": "object",
+      "description": "4A HAL ALSA control map for a stream",
+      "properties": {
+        "uid": { "$ref": "ctl-schema.json#definitions/uid" },
+        "stream": { "$ref": "#definitions/role" },
+        "volramp": { "$ref": "#definitions/volramp" },
+        "volume": { "$ref": "#definitions/volume" },
+        "bass": { "$ref": "#definitions/volume" },
+        "mid": { "$ref": "#definitions/volume" },
+        "treble": { "$ref": "#definitions/volume" },
+        "fade": { "$ref": "#definitions/volume" },
+        "balance": { "$ref": "#definitions/volume" }
+      },
+      "required": [ "stream" ]
+    },
+    "card-sink": {
+      "type": "object",
+      "description": "Defines a card sink for a given port",
+      "properties": {
+        "type": { "type": "string", "description": "The speaker type, or mic type" },
+        "port": { "type": "integer", "description": "The output/input port number" }
+      },
+      "required": [ "type", "port" ]
+    },
+    "stream-sink": {
+      "type": "object",
+      "description": "Defines a stream sink",
+      "properties": {
+        "channels": {
+          "type": "integer",
+          "description": "An integer indicating the number of channels this stream has. This must match the associated zone's channel count" },
+        "zone": {
+          "type": "string",
+          "description": "A string indicating the zone that this stream is assigned to"
+        }
+      }
+    },
+    "mapping": {
+      "type": "array",
+      "description": "An array of outputs to be mapped to the nth input. This array's index within it's parent array corresponds to n",
+      "items": {
+        "type": "string",
+        "description": "A string indicating the card channel to map to"
+      }
+    },
+    "card": {
+      "type": "object",
+      "description": "4A HAL ALSA cards and their sinks and sources",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "A string specifying the name of the ALSA card"
+        },
+        "info": {
+          "type":"string",
+          "description": "An informative field describing the card"
+        },
+        "channels": {
+          "type": "object",
+          "description": "An object declaring the sinks and sources available for this card",
+          "properties": {
+            "sink": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/card-sink" }
+            },
+            "source": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/card-sink" }
+            }
+          },
+          "required": [ "sink" ]
+        }
+      },
+      "required": ["uid", "channels"]
+    },
+    "zone": {
+      "type": "object",
+      "description": "An object defining channel mapping to zones",
+      "properties": {
+        "uid": { "$ref": "ctl-schema.json#/definitions/uid" },
+        "type": {
+          "type": "string",
+          "enum": [ "sink", "source" ],
+          "description": "An enum string designating the zone as a 'sink' or 'source'"
+        },
+        "mapping": {
+          "type": "array",
+          "description": "An array defining input to output mapping",
+          "items": { "$ref": "#/definitions/mapping" }
+        }
+      },
+      "required": [ "uid", "mapping" ]
+    },
+    "stream": {
+      "type": "object",
+      "description": "An object defining the available streams to be set up as ALSA PCMs",
+      "properties": {
+        "uid": { "$ref": "ctl-schema.json#/definitions/uid" },
+        "role": { "$ref": "#/definitions/role" },
+        "sink": { "$ref": "#/definitions/stream-sink" },
+        "ctls": {
+          "$ref": "ctl-schema.json#/definitions/section"
+        }
+      },
+      "required": [ "role" ]
+    }
+  }
+}

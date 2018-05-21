@@ -1,0 +1,141 @@
+{
+  "$schema": "./4a-hal-schema.json",
+  "metadata": {
+      "uid": "4A generic HAL",
+      "version": "1.0",
+      "api": "4a-hal-generic",
+      "info": "4A generic HAL for dynamic routing/mixing",
+      "require": [ "alsacore", "fd-dsp-hifi2"]
+  },
+  "onload": [
+      {
+          "uid": "init-hal-plugin",
+          "info": "Initialise 4A generic HAL plugin",
+          "action": "api://fd-dsp-hifi2#init_hal_plugin"
+      }
+  ],
+  "cards": [
+    {
+      "uid": "xfalsa",
+      "info": "Fiberdyne DSP for Xtensa R-Car HiFi2",
+      "channels": {
+        "sink": [
+          {
+            "type": "FrontLeftFullRange",
+            "port": 0
+          },
+          {
+            "type": "FrontRightFullRange",
+            "port": 1
+          }
+        ],
+        "source": [
+          {
+            "type": "FrontRightMic",
+            "port": 0
+          }
+        ]
+      }
+    }
+  ],
+  "zones": [
+    {
+      "uid": "DriverOnly",
+      "type": "sink",
+      "mapping": [
+        [
+          "FrontRightFullRange"
+        ]
+      ]
+    },
+    {
+      "uid": "FrontOnly",
+      "type": "sink",
+      "mapping": [
+        [
+          "FrontLeftFullRange"
+        ],
+        [
+          "FrontRightFullRange"
+        ]
+      ]
+    },
+    {
+      "uid": "FiveOne",
+      "type": "sink",
+      "mapping": [
+        [
+          "FrontLeftFullRange"
+        ],
+        [
+          "FrontRightFullRange"
+        ],
+        [
+          "FrontLeftFullRange"
+        ],
+        [
+          "FrontRightFullRange"
+        ],
+        [
+          "FrontLeftFullRange",
+          "FrontRightFullRange"
+        ],
+        [
+          "FrontLeftFullRange",
+          "FrontRightFullRange"
+        ]
+      ]
+    }
+  ],
+  "master": {
+    "ctls": {
+      "files": "ctl-master"
+    }
+  },
+  "streams": [
+    {
+      "uid": "nav",
+      "role": "Navigation",
+      "sink": {
+        "channels": 1,
+        "zone": "DriverOnly"
+      },
+      "ctls": {
+        "files": "ctl-navigation"
+      }
+    },
+    {
+      "uid": "phone",
+      "role": "Phone",
+      "sink": {
+        "channels": 1,
+        "zone": "DriverOnly"
+      },
+      "ctls": {
+        "files": "ctl-phone"
+      }
+    },
+    {
+      "uid": "radio",
+      "role": "Radio",
+      "sink": {
+        "channels": 2,
+        "zone": "FrontOnly"
+      },
+      "ctls": {
+        "files": "ctl-radio"
+      }
+    },
+    {
+      "uid": "multimedia",
+      "role": "Multimedia",
+      "sink": {
+        "channels": 6,
+        "zone": "FiveOne"
+      },
+      "ctls": {
+        "files": "ctl-multimedia"
+      }
+    }
+  ]
+}

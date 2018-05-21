@@ -1,0 +1,22 @@
+{
+  "$schema": "./4a-hal-schema.json",
+  "ctls": [
+    {
+      "uid": "Navigation_Playback_Ramp",
+      "name": "RampUp Navigation Volume",
+      "value": 80,
+      "minval": 0,
+      "maxval": 100,
+      "step": 1
+    },
+    {
+      "uid": "Navigation_Playback_Volume",
+      "name": "Navigation Volume",
+      "value": 50,
+      "count": 1,
+      "minval": 183,
+      "maxval": 255,
+      "step": 1
+    }
+  ]
+}

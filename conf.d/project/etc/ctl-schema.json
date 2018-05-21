@@ -1,0 +1,167 @@
+{
+	"id": "http://iot.bzh/download/public/schema/json/ctl-schema.json#",
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"description": "Controller configuration schema",
+
+	"type": "object",
+
+	"properties": {
+		"metadata": {
+			"$ref": "#/definitions/metadata",
+			"description": "Set up controller metadata used to give some informations"
+		},
+		"onload": {
+			"oneOf":[
+				{
+					"type": "array",
+					"items": {"$ref": "#/definitions/action"}
+				},
+				{
+					"$ref": "#/definitions/action"
+				}
+			],
+			"description": "Defines startup time configuration. Onload may provide multiple initialisation profiles, each with a different label."
+		},
+		"controls": {
+			"oneOf":[
+				{
+					"type": "array",
+					"items": {"$ref": "#/definitions/action"}
+				},
+				{
+					"$ref": "#/definitions/action"
+				}
+			],
+			"description": "Defines a list of controls that are accessible"
+		},
+		"events": {
+			"oneOf":[
+				{
+					"type": "array",
+					"items": {"$ref": "#/definitions/action"}
+				},
+				{
+					"$ref": "#/definitions/action"
+				}
+			],
+			"description": "Defines a list of actions to be executed on event reception. Even can do anything a controller can (change state, send back signal, ...)"
+		},
+		"resources": {
+			"oneOf":[
+				{
+					"type":"array",
+					"items": {"$ref": "#/definitions/plugin"}
+				},
+				{ "$ref": "#/definitions/plugin"}
+			]
+		},
+		"plugins": {
+			"oneOf":[
+				{
+					"type":"array",
+					"items": {"$ref": "#/definitions/plugin"}
+				},
+				{ "$ref": "#/definitions/plugin"}
+			]
+		},
+	"additionalProperties": {
+		"oneOf":[
+			{
+				"type":"array",
+				"items": {"$ref": "#/definitions/action"}
+			},
+			{"$ref": "#/definitions/action"},
+			{"type":"boolean"}
+		],
+		"default": false
+		}
+	},
+
+	"definitions": {
+		"uid": {
+			"type": "string",
+			"description": "An uid that will be taken in debug message of AGL binder. '#' character it isn't allowed",
+			"pattern": "^[^#]*$"
+		},
+		"args": {
+			"type": "object",
+			"additionalProperties": {
+				"anyOf": [
+					{ "type": "string" },
+					{ "type": "number" }
+				]
+			}
+		},
+		"action": {
+			"type": "object",
+			"description": "Action to be executed, it could be executed on demand or once an event is received. An action could come from a plugin C/C++ function, a LUA function (if LUA support has been enabled), a call to a sub service with the couple api/verb, or builtin binding function.",
+			"properties": {
+				"uid": {"$ref": "#/definitions/uid"},
+				"info": { "type":"string", "description": "An informative field describing the action"},
+				"privileges": { "type": "string", "description": "AGL permission needed to be able to call this action"},
+				"action": {
+					"type": "string",
+					"description": "An string specifiyng the callback. It could be : 'api://API_NAME/verb_name', 'lua://plugin_name#function_name', 'plugin://plugin_name/function_name'.",
+					"pattern": "^((plugin|lua):\/\/[^#]*#.*$|api:\/\/[^ ”#%&\/?`\\x7f]*#.*$)"
+				},
+				"args": { "$ref": "#/definitions/args" }
+			},
+			"required": ["uid", "action"]
+		},
+		"metadata": {
+			"type": "object",
+			"properties": {
+				"uid": {"$ref": "#/definitions/uid"},
+				"version": { "type": "string" },
+				"api": { "type": "string", "description": "Name that api will take"},
+				"info": { "type": "string" },
+				"require": { "type": "array", "items": {"type": "string"} },
+				"files": { "type": "array", "items": {"type": "string"} }
+			},
+			"required": ["uid", "version"]
+		},
+		"plugin": {
+			"type": "object",
+			"description": "Define plugins used with this controller. A plugin is a C/C++ program meant to execute some task after an event or on demand. This easily extend intrinsec binding logic for ad-hoc needs.",
+			"properties": {
+				"uid": {"$ref": "#/definitions/uid"},
+				"info": { "type": "string", "description": "(Optionnal) Informative field describing the plugin" },
+				"spath": { "type": "string", "description": "(Optionnal) semicolon separated paths where to find the plugin. This could be a compiled shared library or LUA scripts. Could be specified using CONTROL_PLUGIN_PATH environment variable also" },
+				"file": { "type": "string", "description": "Plugin file or LUA scripts to be loaded" },
+				"lua2c": { "type": "string", "description": "(Optionnal) C functions that could be called from a LUA script"}
+			},
+			"required": ["uid", "file"]
+		},
+		"section": {
+			"type": "object",
+			"description": "A configuration section. That could be anything needed by the binding. It is loaded by callback specified in your controller section configuration structure in your binding. See docs of ctl-utilities.",
+			"properties":  {
+				"files": {
+					"oneOf":[
+						{"type":"string"},
+						{
+							"type":"array",
+							"items": {"type":"string"}
+						}
+					],
+					"description": "Path to files containing additionnals object to load."
+				},
+				"uid": {"$ref": "#/definitions/uid"},
+				"info":       { "type": "string" },
+				"actions": {
+					"oneOf":[
+						{
+							"type":"array",
+							"items": {"$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/action"}
+						},
+						{"$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/action"}
+					]
+				}
+			},
+			"oneOf":[
+				{"required": ["uid"]},
+				{"required": ["files"]}
+			]
+		}
+	}
+}
