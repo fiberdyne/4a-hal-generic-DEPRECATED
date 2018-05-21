@@ -154,7 +154,8 @@
       "type": "object",
       "description": "4A HAL ALSA cards and their sinks and sources",
       "properties": {
-        "uid": {
+        "uid": { "$ref": "ctl-schema.json#definitions/uid" },
+        "name": {
           "type": "string",
           "description": "A string specifying the name of the ALSA card"
         },
@@ -178,7 +179,7 @@
           "required": [ "sink" ]
         }
       },
-      "required": ["uid", "channels"]
+      "required": ["name", "channels"]
     },
     "zone": {
       "type": "object",

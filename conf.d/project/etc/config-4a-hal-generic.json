@@ -17,6 +17,7 @@
   "cards": [
     {
       "uid": "xfalsa",
+      "name": "xfalsa",
       "info": "Fiberdyne DSP for Xtensa R-Car HiFi2",
       "channels": {
         "sink": [
