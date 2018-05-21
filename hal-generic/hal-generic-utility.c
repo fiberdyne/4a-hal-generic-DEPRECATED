@@ -23,44 +23,63 @@
 
 #define MAX_FILENAME_LEN 255
 
+static json_object *_zonesJ = NULL;   // Zones JSON section from conf file
+static json_object *_cardpropsJ = NULL;   // Cardprops JSON config
+static json_object *_streammapJ = NULL; // Streammap JSON config
+
 // Local function declarations
 PUBLIC STATIC json_object *generateCardProperties(json_object *cfgCardsJ);
 PUBLIC STATIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ);
-PUBLIC STATIC json_object *getConfigurationString(json_object *configJ);
+PUBLIC STATIC json_object *getMap(json_object *cfgZones, const char *zoneName);
 
-json_object *loadHalConfig(void)
+int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *cardsJ)
 {
-    char filename[MAX_FILENAME_LEN];
-    json_object *config = NULL;
-    char *bindingDirPath = GetBindingDirPath(NULL);
+  int err = 0;
+  
+  AFB_NOTICE("Card Config");
+  _cardpropsJ = generateCardProperties(cardsJ);
 
-    AFB_NOTICE("Binding path: %s", bindingDirPath);
-    snprintf(filename, MAX_FILENAME_LEN, "%s/etc/%s", bindingDirPath, "onload-config-0001.json");
-    AFB_NOTICE("path: %s", filename);
-
-    config = json_object_from_file(filename);
-    if (!config)
-    {
-      AFB_ERROR("Couldn't load file: %s", filename);
-      return NULL;
-    }
-
-    return config;
+  return err;
 }
 
-HAL_ERRCODE initialize_sound_card(json_object *configJ)
+// Must come AFTER zone config!!
+int StreamConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *streamsJ)
 {
-    json_object *configurationStringJ = NULL;
+  int err = 0;
+
+  AFB_NOTICE("Stream Config");
+  _streammapJ = generateStreamMap(streamsJ, _zonesJ);
+
+  return err;
+}
+
+int ZoneConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *zonesJ)
+{
+  int err = 0;
+
+  AFB_NOTICE("Zone Config");
+  _zonesJ = zonesJ;
+
+  return err;
+}
+
+HAL_ERRCODE initialize_sound_card()
+{
+    json_object *cfgJ = NULL;
     json_object *cfgResultJ = NULL;
     json_object *resultJ = NULL;
     int result = -1;
     const char *message;
 
-    configurationStringJ = getConfigurationString(configJ);
-
     AFB_NOTICE("Configuration String recieved, sending to sound card");
 
-    result = afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", configurationStringJ, &cfgResultJ);
+    wrap_json_pack(&cfgJ, "{s:o,s:o}",
+                   "cardprops", _cardpropsJ,
+                   "streammap", _streammapJ);
+
+    printf("jobj from str:\n---\n%s\n---\n", json_object_to_json_string_ext(cfgJ, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
+
+    result = afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", cfgJ, &cfgResultJ);
     AFB_NOTICE("Result Code: %d, result: %s", result, json_object_get_string(cfgResultJ));
 
     if (result)
@@ -162,7 +181,7 @@ PUBLIC STATIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_obje
         currStreamJ = json_object_array_get_idx(cfgStreamsJ, idxStream);
 
         wrap_json_unpack(currStreamJ, "{s:s,s?o,s?o}",
-                         "name", &strmName, "source", &strmSource, "sink", &strmSink);
+                         "uid", &strmName, "source", &strmSource, "sink", &strmSink);
 
         wrap_json_unpack(strmSource, "{s:i,s?s,s:s,s?o}", "channels", &strmSrcChannels, "profile", &strmSrcProfile, "zone", &strmSrcZone, "defaultconfig", &strmSrcDflt);
         wrap_json_unpack(strmSink, "{s:i,s?s,s:s,s?o}", "channels", &strmSnkChannels, "profile", &strmSnkProfile, "zone", &strmSnkZone, "defaultconfig", &strmSnkDflt);
@@ -180,29 +199,4 @@ PUBLIC STATIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_obje
         //AFB_NOTICE("---------");
     }
     return cfgStreamMapJ;
-}
-
-PUBLIC STATIC json_object *getConfigurationString(json_object *configJ)
-{
-    json_object *configurationString;
-    const char *cfgSchema;
-    json_object *cfgMetadataJ;
-    json_object *cfgPluginsJ, *cfgControlJ, *cfgEqPointJ, *cfgFilterJ, *cfgCardsJ, *cfgZoneJ, *cfgStreamsJ;
-
-    AFB_NOTICE("---------------------------");
-    AFB_NOTICE("Starting Configuration Read");
-
-    wrap_json_unpack(configJ, "{s:s,s:o,s:o,s:o,s:o,s:o,s:o,s:o,s:o}",
-                     "$schema", &cfgSchema, "metadata", &cfgMetadataJ, "plugins", &cfgPluginsJ,
-                     "control", &cfgControlJ, "eqpoint", &cfgEqPointJ, "filter", &cfgFilterJ,
-                     "cards", &cfgCardsJ, "zone", &cfgZoneJ, "streams", &cfgStreamsJ);
-
-    json_object *cfgCardPropsJ = generateCardProperties(cfgCardsJ);
-    json_object *cfgStreamMapJ = generateStreamMap(cfgStreamsJ, cfgZoneJ);
-
-    wrap_json_pack(&configurationString, "{s:o,s:o}", "cardprops", cfgCardPropsJ, "streammap", cfgStreamMapJ);
-
-    //AFB_NOTICE("Printing configurationString: %s", json_object_get_string(configurationString));
-
-    return configurationString;
 }

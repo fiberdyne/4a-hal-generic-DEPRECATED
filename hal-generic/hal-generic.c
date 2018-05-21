@@ -23,6 +23,19 @@
 #define ALSA_CARD_NAME "xfalsa"
 //#define ALSA_DEVICE_ID "ALC887-VD Analog"
 
+#define PCM_Master_Bass 1000
+#define PCM_Master_Mid 1001
+#define PCM_Master_Treble 1002
+
+// Config Section definition (note: controls section index should match handle retrieval in HalConfigExec)
+static CtlSectionT ctrlSections[]= {
+    {.key="cards"  , .loadCB= CardConfig},
+    {.key="zones"  , .loadCB= ZoneConfig},
+    {.key="streams", .loadCB= StreamConfig},
+
+    {.key=NULL}
+};
+
 /* Default Values for MasterVolume Ramping */
 STATIC halVolRampT volRampMaster = {
     .mode = RAMP_VOL_NORMAL,
@@ -64,10 +77,6 @@ STATIC halVolRampT volRampMultimedia = {
     .stepUp = 1,
 };
 
-#define PCM_Master_Bass 1000
-#define PCM_Master_Mid 1001
-#define PCM_Master_Treble 1002
-
 /* declare ALSA mixer controls */
 STATIC alsaHalMapT alsaHalMap[] = {
     {.tag = Master_Playback_Volume, .ctl = {.name = "Master Playback Volume", .value = 100}},
@@ -95,18 +104,50 @@ STATIC alsaHalSndCardT alsaHalSndCard = {
     .ctls = alsaHalMap,
     .volumeCB = NULL, /* use default volume normalization function */
 };
+PUBLIC int hal_generic_preinit()
+{
+    //const char *dirList= getenv("CONTROL_CONFIG_PATH");
+    //if (!dirList) dirList=CONTROL_CONFIG_PATH;
+    char *dirList = GetBindingDirPath(NULL);
+    strcat(dirList, "/etc");
+
+    const char *configPath = CtlConfigSearch(NULL, dirList, "config");
+    if (!configPath) {
+        AFB_ApiError(apiHandle, "CtlPreInit: No config-%s-* config found in %s ", GetBinderName(), dirList);
+        goto OnErrorExit;
+    }
+
+    // load config file and create API
+    CtlConfigT *ctrlConfig = CtlLoadMetaData(NULL, configPath);
+    if (!ctrlConfig) {
+        AFB_ApiError(apiHandle, "CtrlBindingDyn No valid control config file in:\n-- %s", configPath);
+        goto OnErrorExit;
+    }
+    
+    if (ctrlConfig->api)
+    {
+      int err = afb_daemon_rename_api(ctrlConfig->api);
+      if (err)
+      {
+        AFB_ApiError(apiHandle, "Fail to rename api to:%s", ctrlConfig->api);
+        goto OnErrorExit;
+      }
+    }
+
+    int err = CtlLoadSections(NULL, ctrlConfig, ctrlSections);
+    return err;
+
+  OnErrorExit:
+    return -1;
+}
 
 /* initializes ALSA sound card using hal plugin API */
 STATIC int hal_generic_init()
 {
     int err = 0;
-    json_object *configJ;
 
     AFB_NOTICE("Initializing 4a-hal-generic");
-
-    // Get the config file.
-    configJ = loadHalConfig();
-
+    
     // Check that hal plugin is present. If so, we can initialize it.
     err = afb_daemon_require_api("fd-dsp-hifi2", 1);
     if (err)
@@ -118,7 +159,7 @@ STATIC int hal_generic_init()
     // If the hal plugin is present, we need to configure our custom sound card to provide all the required interfaces.
     // This will load the configuration json file, and set up the sound card
     AFB_NOTICE("Start Initialize of sound card");
-    err = initialize_sound_card(configJ);
+    err = initialize_sound_card();
     if (err)
     {
         AFB_ERROR("Initializing Sound Card failed!");
@@ -169,6 +210,7 @@ PUBLIC void hal_generic_event_cb(const char *evtname, json_object *j_event)
 /* API prefix should be unique for each snd card */
 PUBLIC const struct afb_binding_v2 afbBindingV2 = {
     .api = "4a-hal-generic",
+    .preinit = hal_generic_preinit,
     .init = hal_generic_init,
     .verbs = halServiceApi,
     .onevent = hal_generic_event_cb,

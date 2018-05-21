@@ -20,10 +20,13 @@
 #define HAL_GENERIC_UTILITY_H
 
 #include "hal-generic.h"
+#include "ctl-config.h"
 
-#include <json-c/json.h>
+int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *cardsJ);
+int StreamConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *streamsJ);
+int ZoneConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *zonesJ);
 
 PUBLIC json_object *loadHalConfig(void);
-HAL_ERRCODE initialize_sound_card(json_object *configJ);
+HAL_ERRCODE initialize_sound_card();
 
 #endif /* HAL_GENERIC_UTILITY_H */

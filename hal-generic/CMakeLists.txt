@@ -20,7 +20,7 @@
 PROJECT_TARGET_ADD(hal-generic)
 
     # Define project Targets
-    ADD_LIBRARY(${TARGET_NAME} MODULE 
+    ADD_LIBRARY(${TARGET_NAME} MODULE
                 hal-generic.h
                 hal-generic.c 
                 hal-generic-utility.c
@@ -36,6 +36,7 @@ PROJECT_TARGET_ADD(hal-generic)
 
     # Library dependencies (include updates automatically)
     TARGET_LINK_LIBRARIES(${TARGET_NAME}
+        ctl-utilities
         ${link_libraries}
     )
 

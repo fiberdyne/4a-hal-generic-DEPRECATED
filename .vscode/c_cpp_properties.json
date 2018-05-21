@@ -4,9 +4,10 @@
           "name": "Linux",
           "includePath": [
               "${workspaceRoot}/4a-hal-utilities",
-              "${workspaceRoot}/app-afb-helpers-submodule"
+              "${workspaceRoot}/app-afb-helpers-submodule",
+              "${workspaceRoot}/app-controller-submodule/ctl-lib"
           ],
-          "defines": [],
+          "defines": [ ],
           "browse": {
               "path": [
                   "${workspaceRoot}"

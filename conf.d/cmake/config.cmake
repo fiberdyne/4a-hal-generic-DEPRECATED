@@ -73,6 +73,7 @@ set (PKG_REQUIRED_LIST
 	afb-daemon>=4.0
 	libmicrohttpd>=0.9.55
 	alsa>=1.1.2
+  lua>=5.3
 )
 
 # Prefix path where will be installed the files
