@@ -29,6 +29,9 @@ PUBLIC STATIC json_object *generateCardProperties(json_object *cardsJ);
 PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object *zonesJ);
 PUBLIC STATIC json_object *getMap(json_object *zonesJ, const char *zoneName);
 
+PUBLIC STATIC HAL_ERRCODE validateZones(json_object *zonesJ);
+PUBLIC STATIC HAL_ERRCODE validateStreams(json_object *streamsJ);
+PUBLIC STATIC HAL_ERRCODE validateStreamControls(json_object *streamCtlsJ);
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -53,12 +56,16 @@ int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *cardsJ)
  */
 int StreamConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *streamsJ)
 {
-  int err = 0;
+  HAL_ERRCODE err = HAL_OK;
 
-  AFB_NOTICE("Stream Config");
+  if (_zonesJ) // zones OK?
+  {
+    err = validateStreams(streamsJ); // streams OK?
+    if (err == HAL_OK)
       _streammapJ = generateStreamMap(streamsJ, _zonesJ);
+  }
 
-  return err;
+  return (int)err;
 }
 
 /*
@@ -66,12 +73,130 @@ int StreamConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *streamsJ
  */
 int ZoneConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *zonesJ)
 {
-  int err = 0;
+  HAL_ERRCODE err = HAL_OK;
 
-  AFB_NOTICE("Zone Config");
+  err = validateZones(zonesJ);
+  if (err == HAL_OK)
     _zonesJ = zonesJ;
 
-  return err;
+  return (int)err;
+}
+
+/*
+ * @brief Parse and validate all STREAM definitions
+ */
+HAL_ERRCODE validateStreams(json_object *streamsJ)
+{
+  int streamsIdx = 0;
+  int streamsLength = json_object_array_length(streamsJ);
+
+  // Loop through the known streams, and make sure all is well
+  for (streamsIdx = 0; streamsIdx < streamsLength; streamsIdx++)
+  {
+    char *streamUid = NULL, *streamRole = NULL,
+         *streamSinkZone = NULL, *streamSourceZone = NULL;
+    json_object *streamCurrJ = NULL, *streamSinkJ = NULL,
+                *streamSourceJ = NULL, *streamCtlsJ = NULL;
+
+    streamCurrJ = json_object_array_get_idx(streamsJ, streamsIdx);
+    wrap_json_unpack(streamCurrJ, "{s?s,s?s,s?o,s?o,s?o}",
+                     "uid", &streamUid, "role", &streamRole, "sink", &streamSinkJ, 
+                     "source", &streamSourceJ, "ctls", &streamCtlsJ);
+
+    // Check that all required fields exist
+    if (!streamUid || !streamRole || !streamSinkJ)
+    {
+      AFB_ApiError(NULL, "STREAM: Properties must include 'uid', 'role', and 'sink'!");
+      return HAL_FAIL; 
+    }
+
+    // Check that the streamRole is always valid
+    // TODO
+
+    // Check the stream sink contains the field 'zone', and that the zone exists!
+    wrap_json_unpack(streamSinkJ, "{s?s}",
+                     "zone", &streamSinkZone);
+    if (!streamSinkZone)
+    {
+      AFB_ApiError(NULL, "STREAM: Sink must have field 'zone'!");
+      return HAL_FAIL;
+    }
+    else if (!getMap(_zonesJ, streamSinkZone))
+      return HAL_FAIL;
+
+    // If stream source is defined, check it contains the field 'zone', and that the zone exists!
+    if (streamSourceJ)
+    {
+      wrap_json_unpack(streamSinkJ, "{s?s}",
+                      "zone", &streamSourceZone);
+      if (!streamSourceZone)
+      {
+        AFB_ApiError(NULL, "STREAM: Source must have field 'zone'!");
+        return HAL_FAIL;
+      }
+      else if (!getMap(_zonesJ, streamSourceZone))
+        return HAL_FAIL;
+    }
+
+    // If ctls are defined ...
+    if (streamCtlsJ)
+      validateStreamControls(streamCtlsJ);
+  }
+
+  return HAL_OK;
+}
+
+/*
+ * @brief Parse and validate all stream CTL definitions
+ */
+HAL_ERRCODE validateStreamControls(json_object *streamsControlsJ)
+{
+  return HAL_OK;
+}
+
+/*
+ * @brief Parse and validate all ZONE definitions
+ */
+HAL_ERRCODE validateZones(json_object *zonesJ)
+{
+  int zonesIdx = 0;
+  int zonesLength = json_object_array_length(zonesJ);
+
+  // Loop through the known zones, and make sure all is well
+  for (zonesIdx = 0; zonesIdx < zonesLength; zonesIdx++)
+  {
+    char *zoneUid = NULL;
+    char *zoneType = NULL;
+    json_object *zoneMappingJ = NULL;
+    json_object *zoneCurrJ = NULL;
+
+    zoneCurrJ = json_object_array_get_idx(zonesJ, zonesIdx);
+    wrap_json_unpack(zoneCurrJ, "{s?s,s?s,s?o}",
+                     "uid", &zoneUid, "type", &zoneType, "mapping", &zoneMappingJ);
+
+    // Check that all required fields exist
+    if (!zoneUid || !zoneType || !zoneMappingJ)
+    {
+      AFB_ApiError(NULL, "ZONE: Zone properties must include 'uid', 'type', and 'mapping'!");
+      return HAL_FAIL; 
+    }
+
+    // Check that the zoneType is always "sink" or "source"
+    if ((strcmp(zoneType, "sink") != 0) && (strcmp(zoneType, "source") != 0))
+    {
+      AFB_ApiError(NULL, "ZONE: Zone type '%s' is not allowed. Must be 'sink' or 'source'!", zoneType);
+      return HAL_FAIL;
+    }
+
+    // Check that the mapping has at least one element
+    if (json_object_array_length(zoneMappingJ) <= 0)
+    {
+      AFB_ApiError(NULL, "ZONE: Zone map must have at least one element!");
+      return HAL_FAIL;
+    }
+  }
+
+  return HAL_OK;
 }
 
 HAL_ERRCODE initialize_sound_card()
@@ -82,8 +207,13 @@ HAL_ERRCODE initialize_sound_card()
     int result = -1;
     const char *message;
 
-    AFB_NOTICE("Configuration String recieved, sending to sound card");
+    if (!_cardpropsJ || !_streammapJ)
+    {
+      AFB_ApiError(NULL, "Cannot initialize HAL plugin: cardprops or streammap is NULL!");
+      return HAL_FAIL;
+    }
 
+    AFB_ApiNotice(NULL, "Configuration OK, sending to HAL plugin");
     wrap_json_pack(&cfgJ, "{s:o,s:o}",
                    "cardprops", _cardpropsJ,
                    "streammap", _streammapJ);
@@ -116,98 +246,125 @@ HAL_ERRCODE initialize_sound_card()
     return HAL_OK;
 }
 
-PUBLIC STATIC json_object *getMap(json_object *cfgZones, const char *zoneName)
+/*
+ * @brief Get the stream mapping according to the zone it belongs to
+ */
+PUBLIC STATIC json_object *getMap(json_object *zonesJ, const char *zoneName)
 {
-    int idxZone;
-    json_object *zoneMapping = 0;
+  int zonesIdx = 0;
+  int zonesLength = json_object_array_length(zonesJ);
+  json_object *zoneMappingJ = 0;
 
-    //AFB_NOTICE("%s, %s", zoneName, json_object_get_string(cfgZones));
+  //AFB_NOTICE("%s, %s", zoneName, json_object_get_string(zonesJ));
 
-    for (idxZone = 0; idxZone < json_object_array_length(cfgZones); idxZone++)
+  // Loop through the known zones, and attempt to find the indicated zone
+  for (zonesIdx = 0; zonesIdx < zonesLength; zonesIdx++)
   {
     char *zoneUid = "";
     char *zoneType = "";
 
-        json_object *currZone = json_object_array_get_idx(cfgZones, idxZone);
-        wrap_json_unpack(currZone, "{s:s,s:s,s:o}",
-                         "uid", &zoneUid, "type", &zoneType, "mapping", &zoneMapping);
+    json_object *zoneCurrJ = json_object_array_get_idx(zonesJ, zonesIdx);
+    wrap_json_unpack(zoneCurrJ, "{s:s,s:s,s:o}",
+                     "uid", &zoneUid, "type", &zoneType, "mapping", &zoneMappingJ);
 
     //AFB_NOTICE("%s, %s", zoneUid, zoneType);
     if (strcmp(zoneUid, zoneName) == 0)
     {
       //AFB_NOTICE("%s",json_object_get_string(zoneMapping));
-            return zoneMapping;
+      return zoneMappingJ;
     }
   } 
 
-    wrap_json_pack(&zoneMapping, "[]");
-    return zoneMapping;
+  AFB_ApiError(NULL, "STREAM: Zone '%s' is not defined!", zoneName);
+  return NULL;
 }
 
-PUBLIC json_object *generateCardProperties(json_object *cfgCardsJ)
+PUBLIC STATIC json_object *generateCardProperties(json_object *cfgCardsJ)
 {
   AFB_NOTICE("Generating Card Properties");
   json_object *cfgCardPropsJ;
   wrap_json_pack(&cfgCardPropsJ, "{}");
-    json_object *currCard = json_object_array_get_idx(cfgCardsJ, 0);
-    if (currCard)
+  json_object *currCardJ = json_object_array_get_idx(cfgCardsJ, 0);
+  if (currCardJ)
   {
     json_object *cardChannels = 0;
 
-        wrap_json_unpack(currCard, "{s:o}", "channels", &cardChannels);
+    wrap_json_unpack(currCardJ, "{s:o}", "channels", &cardChannels);
     if (cardChannels)
     {
       json_object *cardSource = 0, *cardSink = 0;
-            // Abstract sink and source from the card channel definition
-            wrap_json_unpack(cardChannels, "{s:o,s:o}", "sink", &cardSink, "source", &cardSource);
+      // Abstract sink and source from the card channel definition
+      wrap_json_unpack(cardChannels, "{s:o,s:o}", "sink", &cardSink, "source", &cardSource);
 
-            // Wrap into our configuration object
+      // Wrap into our configuration object
 
-            wrap_json_pack(&cfgCardPropsJ, "{s:o*,s:o*}", "sink", cardSink, "source", cardSource);
-        }
+      wrap_json_pack(&cfgCardPropsJ, "{s:o*,s:o*}", "sink", cardSink, "source", cardSource);
     }
-    return cfgCardPropsJ;
+  }
+  return cfgCardPropsJ;
 }
 
-PUBLIC STATIC json_object *generateStreamMap(json_object *cfgStreamsJ, json_object *cfgZoneJ)
+//
+// Construct the stream map by looping over each stream and extracting the mapping.
+//
+PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object *zonesJ)
 {
-    //
-    // Construct the stream map by looping over each stream and extracting the mapping.
-    //
-    int idxStream;
-    json_object *cfgStreamMapJ;
-    wrap_json_pack(&cfgStreamMapJ, "[]");
-    for (idxStream = 0; idxStream < json_object_array_length(cfgStreamsJ); idxStream++)
+  int idxStream;
+  json_object *streamMapArrayJ;
+  wrap_json_pack(&streamMapArrayJ, "[]");
+
+  for (idxStream = 0; idxStream < json_object_array_length(streamsJ); idxStream++)
+  {
+    json_object *streamMapJ = 0;
+
+    json_object *currStreamJ = 0;
+    const char *streamName = NULL;
+    const char *sourceProfile = NULL, *sinkProfile = NULL;
+    const char *sourceZone = NULL, *sinkZone = NULL;
+    int sinkChannels = 0, sourceChannels = 0;
+    json_object *strmSource = 0, *strmSink = 0;
+
+    currStreamJ = json_object_array_get_idx(streamsJ, idxStream);
+
+    // Begin unpacking
+    wrap_json_unpack(currStreamJ, "{s:s,s?o,s?o}",
+                      "role", &streamName, "source", &strmSource, "sink", &strmSink);
+
+    wrap_json_unpack(strmSource, "{s?s,s:s}",
+                      "profile", &sourceProfile, "zone", &sourceZone);
+    wrap_json_unpack(strmSink, "{s?s,s:s}",
+                      "profile", &sinkProfile, "zone", &sinkZone);
+
+    // Validate that the mapped zone exists, and get the zone's mapping
+    json_object *sourceJ = NULL, *sinkJ = NULL;
+    json_object *sourceZoneMapJ = NULL, *sinkZoneMapJ = NULL;
+    if (sourceZone)
     {
-        json_object *cfgstrStream = 0;
-
-        json_object *currStreamJ = 0;
-        const char *strmName = "";
-        const char *strmSrcProfile = "", *strmSnkProfile = "";
-        const char *strmSrcZone = "", *strmSnkZone = "";
-        int strmSrcChannels = 0, strmSnkChannels = 0;
-        json_object *strmSrcDflt = 0, *strmSnkDflt = 0;
-        json_object *strmSource = 0, *strmSink = 0;
-
-        currStreamJ = json_object_array_get_idx(cfgStreamsJ, idxStream);
-
-        wrap_json_unpack(currStreamJ, "{s:s,s?o,s?o}",
-                         "uid", &strmName, "source", &strmSource, "sink", &strmSink);
-
-        wrap_json_unpack(strmSource, "{s:i,s?s,s:s,s?o}", "channels", &strmSrcChannels, "profile", &strmSrcProfile, "zone", &strmSrcZone, "defaultconfig", &strmSrcDflt);
-        wrap_json_unpack(strmSink, "{s:i,s?s,s:s,s?o}", "channels", &strmSnkChannels, "profile", &strmSnkProfile, "zone", &strmSnkZone, "defaultconfig", &strmSnkDflt);
-
-        json_object *streamSourceMap = getMap(cfgZoneJ, strmSrcZone);
-        json_object *streamSinkMap = getMap(cfgZoneJ, strmSnkZone);
-
-        json_object *sourceCfg = 0, *sinkCfg = 0;
-        wrap_json_pack(&sourceCfg, "{s:i,s:o}", "channels", strmSrcChannels, "mapping", streamSourceMap);
-        wrap_json_pack(&sinkCfg, "{s:i,s:o}", "channels", strmSnkChannels, "mapping", streamSinkMap);
-        wrap_json_pack(&cfgstrStream, "{s:s,s:o,s:o}", "stream", strmName, "source", sourceCfg, "sink", sinkCfg);
-
-        json_object_array_add(cfgStreamMapJ, cfgstrStream);
-
-        //AFB_NOTICE("---------");
+      AFB_NOTICE("sourceZone: %s", sourceZone);
+      sourceZoneMapJ = getMap(zonesJ, sourceZone);
+      if (sourceZoneMapJ)
+      {
+        sourceChannels = json_object_array_length(sourceZoneMapJ);
+        wrap_json_pack(&sourceJ, "{s:i,s:o}",
+                        "channels", sourceChannels, "mapping", sourceZoneMapJ);
+      }
     }
-    return cfgStreamMapJ;
+    if (sinkZone)
+    {
+      sinkZoneMapJ = getMap(zonesJ, sinkZone);
+      if (sinkZoneMapJ)
+      {
+        sinkChannels = json_object_array_length(sinkZoneMapJ);
+        wrap_json_pack(&sinkJ, "{s:i,s:o}",
+                        "channels", sinkChannels, "mapping", sinkZoneMapJ);
+      }
+    }
+    
+    wrap_json_pack(&streamMapJ, "{s:s,s:o*,s:o*}",
+                    "stream", streamName, "source", sourceJ, "sink", sinkJ);
+
+    json_object_array_add(streamMapArrayJ, streamMapJ);
+  }
+
+  return streamMapArrayJ;
 }
