@@ -32,7 +32,7 @@
         ],
         "source": [
           {
-            "type": "FrontRightMic",
+            "type": "Driver",
             "port": 0
           }
         ]

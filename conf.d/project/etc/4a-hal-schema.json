@@ -60,7 +60,7 @@
                 "Emergency", "Warning", "Video", "Streaming", "Fallback",
                 "CustomHigh", "CustomMedium", "CustomLow"
               ],
-      "description": "An enum string defining an audio stream role. Options are: Master, Radio, Multimedia, Phone, Navigation, Emergency, Warning, Video, Streaming, Fallback, CustomHigh, CustomMedium, or CustomLow" 
+      "description": "An enum string defining an audio stream role" 
     },
     "ctl-name": {
       "type": "string",
@@ -137,8 +137,41 @@
       "type": "object",
       "description": "Defines a card sink for a given port",
       "properties": {
-        "type": { "type": "string", "description": "The speaker type, or mic type" },
-        "port": { "type": "integer", "description": "The output/input port number" }
+        "type": {
+          "type": "string",
+          "description": "An enum string defining the output speaker type",
+          "enum": [
+            "FrontLeftFullRange", "FrontLeftWoofer", "FrontLeftTweeter",
+            "FrontRightFullRange", "FrontRightWoofer", "FrontRightTweeter",
+            "RearLeftFullRange", "RearLeftWoofer", "RearLeftTweeter",
+            "RearLeftFullRange", "RearLeftWoofer", "RearLeftTweeter",
+            "Center", "LFE"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The output port number"
+        }
+      },
+      "required": [ "type", "port" ]
+    },
+    "card-source": {
+      "type": "object",
+      "description": "Defines a card source for a given port",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "An enum string defining the input mic type",
+          "enum": [
+            "Driver", "Rear"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The input port number"
+        }
       },
       "required": [ "type", "port" ]
     },
@@ -189,7 +222,7 @@
             },
             "source": {
               "type": "array",
-              "items": { "$ref": "#/definitions/card-sink" }
+              "items": { "$ref": "#/definitions/card-source" }
             }
           },
           "required": [ "sink" ]
