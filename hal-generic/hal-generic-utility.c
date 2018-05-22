@@ -23,6 +23,7 @@
 static json_object *_zonesJ = NULL;     // Zones JSON section from conf file
 static json_object *_cardpropsJ = NULL; // Cardprops JSON config
 static json_object *_streammapJ = NULL; // Streammap JSON config
+static json_object *_ctlsJ = NULL;      // Ctls JSON config
 
 // Local function declarations
 PUBLIC STATIC json_object *generateCardProperties(json_object *cardsJ);
@@ -32,6 +33,7 @@ PUBLIC STATIC json_object *getZoneMap(json_object *zonesJ, const char *zoneName)
 PUBLIC STATIC HAL_ERRCODE validateZones(json_object *zonesJ);
 PUBLIC STATIC HAL_ERRCODE validateStreams(json_object *streamsJ);
 PUBLIC STATIC HAL_ERRCODE validateCtls(json_object *ctlsJ);
+PUBLIC STATIC HAL_ERRCODE validateCtl(json_object *ctlJ, const char *ctlType);
 
 PUBLIC STATIC json_object *json_object_array_find(json_object *arrayJ,
                                                   const char *key,
@@ -95,7 +97,7 @@ int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctlsJ)
 
   err = validateCtls(ctlsJ);
   if (err == HAL_OK)
-    {}//_zonesJ = zonesJ;
+    _ctlsJ = ctlsJ;
 
   return (int)err;
 }
@@ -192,6 +194,96 @@ HAL_ERRCODE validateStreams(json_object *streamsJ)
  */
 HAL_ERRCODE validateCtls(json_object *ctlsJ)
 {
+  int ctlsIdx = 0;
+  int ctlsLength = json_object_array_length(ctlsJ);
+
+  // Loop through the ctls, and make sure all is well
+  for (ctlsIdx = 0; ctlsIdx < ctlsLength; ctlsIdx++)
+  {
+    char *ctlUid = NULL, *ctlStream = NULL;
+    json_object *ctlCurrJ = NULL, *ctlVolumeJ = NULL, *ctlVolrampJ = NULL,
+                *ctlBassJ = NULL, *ctlMidJ = NULL, *ctlTrebleJ = NULL,
+                *ctlFadeJ = NULL, *ctlBalanceJ = NULL;
+
+    ctlCurrJ = json_object_array_get_idx(ctlsJ, ctlsIdx);
+    wrap_json_unpack(ctlCurrJ, "{s?s,s?s,s?o,s?o,s?o}",
+                     "uid", &ctlUid, "stream", &ctlStream,
+                     "volume", &ctlVolumeJ, "volramp", &ctlVolrampJ,
+                     "bass", &ctlBassJ, "mid", &ctlMidJ, "treble", &ctlTrebleJ,
+                     "fade", &ctlFadeJ, "balance", &ctlBalanceJ);
+
+    // Check that all required fields exist
+    if (!ctlStream || !ctlVolumeJ)
+    {
+      AFB_ApiError(NULL, "CTL: Properties must include 'stream' and 'volume'!");
+      return HAL_FAIL; 
+    }
+
+    // Check that the ctlStream points to a valid stream
+    if (strcmp(ctlStream, "Master") != 0) // Master does not need to be defined
+    {
+      if (!json_object_array_find(_streammapJ, "stream", ctlStream))
+      {
+        AFB_ApiError(NULL, "CTL: Stream '%s' is not defined!", ctlStream);
+        return HAL_FAIL;
+      }
+    }
+
+    // Check that control 'value', 'minval', 'maxval' values are sane
+    if (validateCtl(ctlVolumeJ, "volume") != HAL_OK)
+      return HAL_FAIL;
+    if (ctlVolrampJ)
+      if (validateCtl(ctlVolrampJ, "volramp") != HAL_OK)
+        return HAL_FAIL;
+    if (ctlBassJ)
+      if (validateCtl(ctlBassJ, "bass") != HAL_OK)
+        return HAL_FAIL;
+    if (ctlMidJ)
+      if (validateCtl(ctlMidJ, "mid") != HAL_OK)
+        return HAL_FAIL;
+    if (ctlTrebleJ)
+      if (validateCtl(ctlTrebleJ, "treble") != HAL_OK)
+        return HAL_FAIL;
+    if (ctlFadeJ)
+      if (validateCtl(ctlFadeJ, "fade") != HAL_OK)
+        return HAL_FAIL;
+    if (ctlBalanceJ)
+      if (validateCtl(ctlBalanceJ, "balance") != HAL_OK)
+        return HAL_FAIL;
+  }
+
+  AFB_ApiNotice(NULL, "CTL: OK!");
+  return HAL_OK;
+}
+
+/*
+ * @brief Parse and validate a CTL definition
+ */
+HAL_ERRCODE validateCtl(json_object *ctlJ, const char *ctlType)
+{
+  // Set to defaults
+  int ctlValue = 50, ctlMinval = 0, ctlMaxval = 100;
+
+  wrap_json_unpack(ctlJ, "{s?i,s?i,s?i}",
+                   "value", &ctlValue, "minval", &ctlMinval,
+                   "maxval", &ctlMaxval);
+
+  if (ctlValue > ctlMaxval)
+  {
+    AFB_ApiError(NULL, "CTL: '%s': 'value' '%i' is greater than it's maxval! (%d)",
+                 ctlType, ctlValue, ctlMaxval);
+    return HAL_FAIL;
+  }
+
+  if (ctlValue < ctlMinval)
+  {
+    AFB_ApiError(NULL, "CTL: '%s': 'value' '%i' is less than it's minval! (%d)",
+                 ctlType, ctlValue, ctlMinval);
+    return HAL_FAIL;
+  }
+
+  return HAL_OK;
+}
   return HAL_OK;
 }
 
@@ -248,7 +340,7 @@ HAL_ERRCODE initialize_sound_card()
     int result = -1;
     const char *message;
 
-    if (!_cardpropsJ || !_streammapJ)
+    if (!_cardpropsJ || !_streammapJ || !_ctlsJ)
     {
       AFB_ApiError(NULL, "Cannot initialize HAL plugin: cardprops or streammap is NULL!");
       return HAL_FAIL;
