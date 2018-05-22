@@ -30,6 +30,8 @@ PUBLIC STATIC json_object *generateCardProperties(json_object *cardsJ);
 PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object *zonesJ);
 PUBLIC STATIC json_object *getZoneMap(json_object *zonesJ, const char *zoneName);
 
+PUBLIC STATIC HAL_ERRCODE validateCards(json_object *cardsJ);
+PUBLIC STATIC HAL_ERRCODE validateCardSinkSource(json_object *arrayJ);
 PUBLIC STATIC HAL_ERRCODE validateZones(json_object *zonesJ);
 PUBLIC STATIC HAL_ERRCODE validateStreams(json_object *streamsJ);
 PUBLIC STATIC HAL_ERRCODE validateCtls(json_object *ctlsJ);
@@ -48,12 +50,13 @@ PUBLIC STATIC json_object *json_object_array_find(json_object *arrayJ,
  */
 int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *cardsJ)
 {
-  int err = 0;
+  HAL_ERRCODE err = HAL_OK;
   
-  AFB_NOTICE("Card Config");
-  _cardpropsJ = generateCardProperties(cardsJ);
+  err = validateCards(cardsJ); // Cards OK?
+  if (err == HAL_OK)
+    _cardpropsJ = generateCardProperties(cardsJ);
 
-  return err;
+  return (int)err;
 }
 
 /*
@@ -158,7 +161,7 @@ HAL_ERRCODE validateStreams(json_object *streamsJ)
     }
 
     // Check that the streamRole is always valid
-    // TODO
+    // TODO check halCtlsTagT type for role
 
     // Check the stream sink contains the field 'zone', and that the zone exists!
     wrap_json_unpack(streamSinkJ, "{s?s}",
@@ -186,6 +189,7 @@ HAL_ERRCODE validateStreams(json_object *streamsJ)
     }
   }
 
+  AFB_ApiNotice(NULL, "STREAM: OK!");
   return HAL_OK;
 }
 
@@ -284,6 +288,83 @@ HAL_ERRCODE validateCtl(json_object *ctlJ, const char *ctlType)
 
   return HAL_OK;
 }
+
+/*
+ * @brief Parse and validate all CARD definitions
+ */
+HAL_ERRCODE validateCards(json_object *cardsJ)
+{
+  int cardsIdx = 0;
+  int cardsLength = json_object_array_length(cardsJ);
+
+  // Loop through the known cards, and make sure all is well
+  for (cardsIdx = 0; cardsIdx < cardsLength; cardsIdx++)
+  {
+    char *cardName = NULL;
+    json_object *cardCurrJ = NULL, *cardChannelsJ = NULL,
+                *cardSinksJ = NULL, *cardSourcesJ = NULL;
+
+    cardCurrJ = json_object_array_get_idx(cardsJ, cardsIdx);
+    wrap_json_unpack(cardCurrJ, "{s?s,s?o}",
+                     "name", &cardName, "channels", &cardChannelsJ);
+
+    // Check that all required fields exist
+    if (!cardName || !cardChannelsJ)
+    {
+      AFB_ApiError(NULL, "CARD: Properties must include 'name', 'channels'!");
+      return HAL_FAIL; 
+    }
+
+    // Check the channels object
+    wrap_json_unpack(cardChannelsJ, "{s?o,s?o}",
+                     "sink", &cardSinksJ, "source", &cardSourcesJ);
+    if (!cardSinksJ)
+    {
+      AFB_ApiError(NULL, "CARD: Channels must contain 'sink' property!");
+      return HAL_FAIL; 
+    }
+    
+    // Check the channels sink and source objects
+    if (validateCardSinkSource(cardSinksJ) != HAL_OK)
+      return HAL_FAIL;
+    if (cardSourcesJ)
+      if (validateCardSinkSource(cardSourcesJ) != HAL_OK)
+        return HAL_FAIL;
+  }
+
+  AFB_ApiNotice(NULL, "CARD: OK!");
+  return HAL_OK;
+}
+
+/*
+ * @brief Parse and validate all card channel SINK/SOURCE definitions
+ */
+HAL_ERRCODE validateCardSinkSource(json_object *arrayJ)
+{
+  int idx = 0;
+  int len = json_object_array_length(arrayJ);
+
+  // Loop through the known card channel sinks/sources
+  for (idx = 0; idx < len; idx++)
+  {
+    json_object *currJ = NULL;
+    char *type = NULL;
+    int port = -1;
+
+    currJ = json_object_array_get_idx(arrayJ, idx);
+    wrap_json_unpack(currJ, "{s?s,s?i}",
+                     "type", &type, "port", &port);
+
+    if (!type || (port < 0))
+    {
+      AFB_ApiError(NULL, "CARD: Channel sink/source must contain 'type' and 'port' properties!");
+      return HAL_FAIL; 
+    }
+
+    // Check 'type' against allowed enum types
+    // TODO
+  }
+  
   return HAL_OK;
 }
 
@@ -298,10 +379,8 @@ HAL_ERRCODE validateZones(json_object *zonesJ)
   // Loop through the known zones, and make sure all is well
   for (zonesIdx = 0; zonesIdx < zonesLength; zonesIdx++)
   {
-    char *zoneUid = NULL;
-    char *zoneType = NULL;
-    json_object *zoneMappingJ = NULL;
-    json_object *zoneCurrJ = NULL;
+    char *zoneUid = NULL, *zoneType = NULL;
+    json_object *zoneMappingJ = NULL, *zoneCurrJ = NULL;
 
     zoneCurrJ = json_object_array_get_idx(zonesJ, zonesIdx);
     wrap_json_unpack(zoneCurrJ, "{s?s,s?s,s?o}",
@@ -310,7 +389,7 @@ HAL_ERRCODE validateZones(json_object *zonesJ)
     // Check that all required fields exist
     if (!zoneUid || !zoneType || !zoneMappingJ)
     {
-      AFB_ApiError(NULL, "ZONE: Zone properties must include 'uid', 'type', and 'mapping'!");
+      AFB_ApiError(NULL, "ZONE: Properties must include 'uid', 'type', and 'mapping'!");
       return HAL_FAIL; 
     }
 
@@ -329,6 +408,7 @@ HAL_ERRCODE validateZones(json_object *zonesJ)
     }
   }
 
+  AFB_ApiNotice(NULL, "ZONE: OK!");
   return HAL_OK;
 }
 
@@ -383,16 +463,16 @@ HAL_ERRCODE initialize_sound_card()
  * @brief Get the stream mapping according to the zone it belongs to
  */
 PUBLIC STATIC json_object *getZoneMap(json_object *zonesJ, const char *zoneName)
-  {
+{
   json_object *resultJ = NULL, *zoneMappingJ = NULL;
-
+  
   resultJ = json_object_array_find(zonesJ, "uid", zoneName);
   if (resultJ)
-    {
+  {
     wrap_json_unpack(resultJ, "{s?o}",
                      "mapping", &zoneMappingJ);
-      return zoneMappingJ;
-    }
+    return zoneMappingJ;
+  }
 
   AFB_ApiError(NULL, "STREAM: Zone '%s' is not defined!", zoneName);
   return NULL;
