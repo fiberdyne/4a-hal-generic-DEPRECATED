@@ -32,6 +32,7 @@ static CtlSectionT ctrlSections[]= {
     {.key="cards"  , .loadCB= CardConfig},
     {.key="zones"  , .loadCB= ZoneConfig},
     {.key="streams", .loadCB= StreamConfig},
+    {.key="ctls"   , .loadCB= CtlConfig},
 
     {.key=NULL}
 };

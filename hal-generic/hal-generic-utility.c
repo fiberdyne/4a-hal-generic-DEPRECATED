@@ -31,7 +31,7 @@ PUBLIC STATIC json_object *getMap(json_object *zonesJ, const char *zoneName);
 
 PUBLIC STATIC HAL_ERRCODE validateZones(json_object *zonesJ);
 PUBLIC STATIC HAL_ERRCODE validateStreams(json_object *streamsJ);
-PUBLIC STATIC HAL_ERRCODE validateStreamControls(json_object *streamCtlsJ);
+PUBLIC STATIC HAL_ERRCODE validateCtls(json_object *ctlsJ);
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -83,6 +83,20 @@ int ZoneConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *zonesJ)
 }
 
 /*
+ * @brief 'ctls' section callback for app controller
+ */
+int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctlsJ)
+{
+  HAL_ERRCODE err = HAL_OK;
+
+  err = validateCtls(ctlsJ);
+  if (err == HAL_OK)
+    {}//_zonesJ = zonesJ;
+
+  return (int)err;
+}
+
+/*
  * @brief Parse and validate all STREAM definitions
  */
 HAL_ERRCODE validateStreams(json_object *streamsJ)
@@ -96,12 +110,12 @@ HAL_ERRCODE validateStreams(json_object *streamsJ)
     char *streamUid = NULL, *streamRole = NULL,
          *streamSinkZone = NULL, *streamSourceZone = NULL;
     json_object *streamCurrJ = NULL, *streamSinkJ = NULL,
-                *streamSourceJ = NULL, *streamCtlsJ = NULL;
+                *streamSourceJ = NULL;
 
     streamCurrJ = json_object_array_get_idx(streamsJ, streamsIdx);
     wrap_json_unpack(streamCurrJ, "{s?s,s?s,s?o,s?o,s?o}",
-                     "uid", &streamUid, "role", &streamRole, "sink", &streamSinkJ, 
-                     "source", &streamSourceJ, "ctls", &streamCtlsJ);
+                     "uid", &streamUid, "role", &streamRole,
+                     "sink", &streamSinkJ, "source", &streamSourceJ);
 
     // Check that all required fields exist
     if (!streamUid || !streamRole || !streamSinkJ)
@@ -137,19 +151,15 @@ HAL_ERRCODE validateStreams(json_object *streamsJ)
       else if (!getMap(_zonesJ, streamSourceZone))
         return HAL_FAIL;
     }
-
-    // If ctls are defined ...
-    if (streamCtlsJ)
-      validateStreamControls(streamCtlsJ);
   }
 
   return HAL_OK;
 }
 
 /*
- * @brief Parse and validate all stream CTL definitions
+ * @brief Parse and validate all CTL definitions
  */
-HAL_ERRCODE validateStreamControls(json_object *streamsControlsJ)
+HAL_ERRCODE validateCtls(json_object *ctlsJ)
 {
   return HAL_OK;
 }
@@ -317,23 +327,24 @@ PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object 
   {
     json_object *streamMapJ = 0;
 
-    json_object *currStreamJ = 0;
-    const char *streamName = NULL;
-    const char *sourceProfile = NULL, *sinkProfile = NULL;
-    const char *sourceZone = NULL, *sinkZone = NULL;
+    const char *streamName = NULL,
+               *sourceProfile = NULL, *sinkProfile = NULL,
+               *sourceZone = NULL, *sinkZone = NULL;
     int sinkChannels = 0, sourceChannels = 0;
-    json_object *strmSource = 0, *strmSink = 0;
+    json_object *streamSource = NULL, *streamSink = NULL,
+                *currStreamJ = NULL;
 
     currStreamJ = json_object_array_get_idx(streamsJ, idxStream);
 
     // Begin unpacking
     wrap_json_unpack(currStreamJ, "{s:s,s?o,s?o}",
-                      "role", &streamName, "source", &strmSource, "sink", &strmSink);
+                     "role", &streamName, "source", &streamSource,
+                     "sink", &streamSink);
 
-    wrap_json_unpack(strmSource, "{s?s,s:s}",
-                      "profile", &sourceProfile, "zone", &sourceZone);
-    wrap_json_unpack(strmSink, "{s?s,s:s}",
-                      "profile", &sinkProfile, "zone", &sinkZone);
+    wrap_json_unpack(streamSource, "{s?s,s:s}",
+                     "profile", &sourceProfile, "zone", &sourceZone);
+    wrap_json_unpack(streamSink, "{s?s,s:s}",
+                     "profile", &sinkProfile, "zone", &sinkZone);
 
     // Validate that the mapped zone exists, and get the zone's mapping
     json_object *sourceJ = NULL, *sinkJ = NULL;

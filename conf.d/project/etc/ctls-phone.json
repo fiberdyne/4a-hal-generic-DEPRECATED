@@ -1,16 +1,18 @@
 {
   "$schema": "./4a-hal-schema.json",
   "ctls": {
-    "uid": "Phone",
+    "uid": "phone-ctls",
+    "stream": "Phone",
     "volramp": {
-      "uid": "RampUp Phone Volume",
+      "name": "RampUp Phone Volume",
       "value": 80,
       "minval": 0,
       "maxval": 100,
-      "step": 1
+      "step": 1,
+      "cb": "volumeRamp"
     },
     "volume": {
-      "uid": "Phone Playback Volume",
+      "name": "Phone Playback Volume",
       "value": 200,
       "count": 1,
       "minval": 183,

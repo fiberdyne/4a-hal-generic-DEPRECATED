@@ -8,11 +8,11 @@
       "require": [ "alsacore", "fd-dsp-hifi2"]
   },
   "onload": [
-      {
-          "uid": "init-hal-plugin",
-          "info": "Initialise 4A generic HAL plugin",
-          "action": "api://fd-dsp-hifi2#init_hal_plugin"
-      }
+    {
+      "uid": "init-hal-plugin",
+      "info": "Initialise 4A generic HAL plugin",
+      "action": "api://fd-dsp-hifi2#init_hal_plugin"
+    }
   ],
   "cards": [
     {
@@ -88,20 +88,19 @@
       ]
     }
   ],
-  "master": {
-    "ctls": {
-      "files": "ctl-master"
-    }
+  "ctls": {
+    "files": [
+      "ctls-master", "ctls-multimedia", "ctls-navigation",
+      "ctls-phone", "ctls-radio"
+    ]
   },
   "streams": [
     {
       "uid": "nav",
       "role": "Navigation",
       "sink": {
-        "zone": "DriverOnly"
-      },
-      "ctls": {
-        "files": "ctl-navigation"
+        "zone": "DriverOnly",
+        "profile": "speech"
       }
     },
     {
@@ -109,9 +108,6 @@
       "role": "Phone",
       "sink": {
         "zone": "DriverOnly"
-      },
-      "ctls": {
-        "files": "ctl-phone"
       }
     },
     {
@@ -119,9 +115,6 @@
       "role": "Radio",
       "sink": {
         "zone": "FrontOnly"
-      },
-      "ctls": {
-        "files": "ctl-radio"
       }
     },
     {
@@ -129,9 +122,6 @@
       "role": "Multimedia",
       "sink": {
         "zone": "FiveOne"
-      },
-      "ctls": {
-        "files": "ctl-multimedia"
       }
     }
   ]

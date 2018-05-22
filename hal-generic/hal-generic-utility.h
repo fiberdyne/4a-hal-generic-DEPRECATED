@@ -25,6 +25,7 @@
 int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *cardsJ);
 int StreamConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *streamsJ);
 int ZoneConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *zonesJ);
+int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctlsJ);
 
 PUBLIC json_object *loadHalConfig(void);
 HAL_ERRCODE initialize_sound_card();

@@ -1,5 +1,5 @@
 {
-  "id": "file:://4a-hal-schema.json#",
+  "id": "file://4a-hal-schema.json#",
   "$schema": "http://iot.bzh/download/public/schema/json/ctl-schema.json#",
   "description": "4A HAL configuration schema",
 
@@ -30,24 +30,24 @@
       ],
       "description": "Defines a list of zones for mapping"
     },
-    "master": {
-      "type": "object",
-      "description": "An object defining the audio master.",
-      "properties": {
-        "ctls": {
-          "$ref": "ctl-schema.json#/definitions/section"
-        }
-      }
+    "ctls": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items":{ "$ref": "#/definitions/ctl" }
+        },  
+        { "$ref": "#/definitions/ctl" },
+        { "$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/section" }
+      ],
+      "description": "Defines a list of stream ctls"
     },
     "streams": {
       "oneOf":[
         {
           "type": "array",
-          "items": {"$ref": "#/definitions/stream"}
+          "items": { "$ref": "#/definitions/stream" }
         },
-        {
-          "$ref": "#/definitions/stream"
-        }
+        { "$ref": "#/definitions/stream" }
       ],
       "description": "Defines a list of streams"
     }
@@ -62,66 +62,76 @@
               ],
       "description": "An enum string defining an audio stream role. Options are: Master, Radio, Multimedia, Phone, Navigation, Emergency, Warning, Video, Streaming, Fallback, CustomHigh, CustomMedium, or CustomLow" 
     },
-    "value": {
-      "type": [ "integer" ],
-      "description": "The initial value set to."
+    "ctl-name": {
+      "type": "string",
+      "description": "The name of the control"
     },
-    "minval": {
-      "type": [ "integer" ],
-      "description": "The minimum value allowed."
+    "ctl-value": {
+      "type": "integer",
+      "description": "The initial value set the control"
     },
-    "maxval": {
-      "type": [ "integer" ],
-      "description": "The maximum value allowed."
+    "ctl-minval": {
+      "type": "integer",
+      "description": "The minimum value allowed for the control"
     },
-    "count": {
-      "type": [ "integer" ],
+    "ctl-maxval": {
+      "type": "integer",
+      "description": "The maximum value allowed for the control"
+    },
+    "ctl-count": {
+      "type": "integer",
       "description": ""
     },
-    "step": {
-      "type": [ "integer" ],
-      "description": "The step value for ramping.",
+    "ctl-step": {
+      "type": "integer",
+      "description": "The step value for ramping the control",
       "default": 1
     },
-    "volramp": {
-      "type": "object",
-      "description": "Defines a volume ramp ALSA control",
-      "properties": {
-        "uid": { "$ref": ""},
-        "value": { "$ref": "#/definitions/value" },
-        "minval": { "$ref": "#/definitions/minval" },
-        "maxval": { "$ref": "#/definitions/maxval" },
-        "step": { "$ref": "#/definitions/step" }
-      },
-      "required": [ "uid" ]
-    },
-    "volume": {
+    "ctl-volume": {
       "type": "object",
       "description": "Defines a volume ALSA control",
       "properties": {
-        "uid": { "$ref": ""},
-        "value": { "$ref": "#/definitions/value" },
-        "minval": { "$ref": "#/definitions/minval" },
-        "maxval": { "$ref": "#/definitions/maxval" },
-        "count": { "$ref": "#/definitions/count" }
+        "uid": { "$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/uid" },
+        "name": { "$ref": "#/definitions/ctl-name" },
+        "value": { "$ref": "#/definitions/ctl-value" },
+        "minval": { "$ref": "#/definitions/ctl-minval" },
+        "maxval": { "$ref": "#/definitions/ctl-maxval" },
+        "count": { "$ref": "#/definitions/ctl-count" }
       },
-      "required": [ "uid" ]
+      "required": [ "name" ]
     },
-    "ctls": {
+    "ctl-volramp": {
+      "type": "object",
+      "description": "Defines a volume ramp ALSA control",
+      "properties": {
+        "uid": { "$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/uid" },
+        "name": { "$ref": "#/definitions/ctl-name" },
+        "value": { "$ref": "#/definitions/ctl-value" },
+        "minval": { "$ref": "#/definitions/ctl-minval" },
+        "maxval": { "$ref": "#/definitions/ctl-maxval" },
+        "step": { "$ref": "#/definitions/ctl-step" }
+      },
+      "required": [ "name" ]
+    },
+    "ctl": {
       "type": "object",
       "description": "4A HAL ALSA control map for a stream",
       "properties": {
-        "uid": { "$ref": "ctl-schema.json#definitions/uid" },
-        "stream": { "$ref": "#definitions/role" },
-        "volramp": { "$ref": "#definitions/volramp" },
-        "volume": { "$ref": "#definitions/volume" },
-        "bass": { "$ref": "#definitions/volume" },
-        "mid": { "$ref": "#definitions/volume" },
-        "treble": { "$ref": "#definitions/volume" },
-        "fade": { "$ref": "#definitions/volume" },
-        "balance": { "$ref": "#definitions/volume" }
+        "uid": { "$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/uid" },
+        "stream": { "$ref": "#/definitions/role" },
+        "volramp": { "$ref": "#/definitions/ctl-volramp" },
+        "volume": { "$ref": "#/definitions/ctl-volume" },
+        "bass": { "$ref": "#/definitions/ctl-volume" },
+        "mid": { "$ref": "#/definitions/ctl-volume" },
+        "treble": { "$ref": "#/definitions/ctl-volume" },
+        "fade": { "$ref": "#/definitions/ctl-volume" },
+        "balance": { "$ref": "#/definitions/ctl-volume" }
       },
-      "required": [ "stream" ]
+      "required": [ "stream", "volume" ]
+    },
+    "zone-uid": {
+      "type": "string",
+      "description": "A string indicating the zone uid that this stream is assigned to"
     },
     "card-sink": {
       "type": "object",
@@ -136,23 +146,17 @@
       "type": "object",
       "description": "Defines a stream sink",
       "properties": {
-        "zone": {
-          "type": "string",
-          "description": "A string indicating the zone that this stream is assigned to"
-        }
+        "zone": { "$ref": "#/definitions/zone-uid" }
       },
-      "required": "zone"
+      "required": [ "zone" ]
     },
     "stream-source": {
       "type": "object",
       "description": "Defines a stream source",
       "properties": {
-        "zone": {
-          "type": "string",
-          "description": "A string indicating the zone that this stream is assigned to"
-        }
+        "zone": { "$ref": "#/definitions/zone-uid" }
       },
-      "required": "zone"
+      "required": [ "zone" ]
     },
     "mapping": {
       "type": "array",
@@ -166,7 +170,7 @@
       "type": "object",
       "description": "4A HAL ALSA cards and their sinks and sources",
       "properties": {
-        "uid": { "$ref": "ctl-schema.json#definitions/uid" },
+        "uid": { "$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/uid" },
         "name": {
           "type": "string",
           "description": "A string specifying the name of the ALSA card"
@@ -197,7 +201,7 @@
       "type": "object",
       "description": "An object defining channel mapping to zones",
       "properties": {
-        "uid": { "$ref": "ctl-schema.json#/definitions/uid" },
+        "uid": { "$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/uid" },
         "type": {
           "type": "string",
           "enum": [ "sink", "source" ],
@@ -215,13 +219,10 @@
       "type": "object",
       "description": "An object defining the available streams to be set up as ALSA PCMs",
       "properties": {
-        "uid": { "$ref": "ctl-schema.json#/definitions/uid" },
+        "uid": { "$ref": "http://iot.bzh/download/public/schema/json/ctl-schema.json#/definitions/uid" },
         "role": { "$ref": "#/definitions/role" },
         "sink": { "$ref": "#/definitions/stream-sink" },
-        "source": { "$ref": "#/definitions/stream-source" },
-        "ctls": {
-          "$ref": "ctl-schema.json#/definitions/section"
-        }
+        "source": { "$ref": "#/definitions/stream-source" }
       },
       "required": [ "uid", "role", "sink" ]
     }

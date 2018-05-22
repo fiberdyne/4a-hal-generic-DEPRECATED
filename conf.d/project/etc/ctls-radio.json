@@ -1,20 +1,28 @@
 {
   "$schema": "./4a-hal-schema.json",
   "ctls": {
-    "uid": "Radio",
+    "uid": "radio-ctls",
+    "stream": "Radio",
     "volramp": {
-      "uid": "RampUp Radio Volume",
+      "name": "RampUp Radio Volume",
       "value": 80,
       "minval": 0,
       "maxval": 100,
-      "step": 1
+      "step": 1,
+      "cb": "volumeRamp"
     },
     "volume": {
-      "uid": "Radio Playback Volume",
+      "name": "Radio Playback Volume",
       "value": 200,
       "count": 1,
       "minval": 183,
       "maxval": 255
+    },
+    "balance": {
+      "name": "Radio Playback Balance",
+      "value": 0,
+      "minval": -15,
+      "maxval": 15
     }
   }
 }
