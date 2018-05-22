@@ -27,11 +27,15 @@ static json_object *_streammapJ = NULL; // Streammap JSON config
 // Local function declarations
 PUBLIC STATIC json_object *generateCardProperties(json_object *cardsJ);
 PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object *zonesJ);
-PUBLIC STATIC json_object *getMap(json_object *zonesJ, const char *zoneName);
+PUBLIC STATIC json_object *getZoneMap(json_object *zonesJ, const char *zoneName);
 
 PUBLIC STATIC HAL_ERRCODE validateZones(json_object *zonesJ);
 PUBLIC STATIC HAL_ERRCODE validateStreams(json_object *streamsJ);
 PUBLIC STATIC HAL_ERRCODE validateCtls(json_object *ctlsJ);
+
+PUBLIC STATIC json_object *json_object_array_find(json_object *arrayJ,
+                                                  const char *key,
+                                                  const char *value);
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -97,6 +101,33 @@ int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctlsJ)
 }
 
 /*
+ * @brief Find a JSON object in a JSON array whose value matches
+ * it's own value for a given key
+ */
+STATIC json_object *json_object_array_find(json_object *arrayJ,
+                                           const char *key,
+                                           const char *value)
+{
+  int idx = 0;
+  int len = json_object_array_length(arrayJ);
+
+  for (idx = 0; idx < len; idx++)
+  {
+    char *val = NULL;
+    json_object *currJ = NULL;
+
+    currJ = json_object_array_get_idx(arrayJ, idx);
+    wrap_json_unpack(currJ, "{s?s}",
+                     key, &val);
+    if (val)
+      if (strcmp(value, val) == 0)
+        return currJ;
+  }
+
+  return NULL;
+}
+
+/*
  * @brief Parse and validate all STREAM definitions
  */
 HAL_ERRCODE validateStreams(json_object *streamsJ)
@@ -135,7 +166,7 @@ HAL_ERRCODE validateStreams(json_object *streamsJ)
       AFB_ApiError(NULL, "STREAM: Sink must have field 'zone'!");
       return HAL_FAIL;
     }
-    else if (!getMap(_zonesJ, streamSinkZone))
+    else if (!getZoneMap(_zonesJ, streamSinkZone))
       return HAL_FAIL;
 
     // If stream source is defined, check it contains the field 'zone', and that the zone exists!
@@ -148,7 +179,7 @@ HAL_ERRCODE validateStreams(json_object *streamsJ)
         AFB_ApiError(NULL, "STREAM: Source must have field 'zone'!");
         return HAL_FAIL;
       }
-      else if (!getMap(_zonesJ, streamSourceZone))
+      else if (!getZoneMap(_zonesJ, streamSourceZone))
         return HAL_FAIL;
     }
   }
@@ -259,31 +290,17 @@ HAL_ERRCODE initialize_sound_card()
 /*
  * @brief Get the stream mapping according to the zone it belongs to
  */
-PUBLIC STATIC json_object *getMap(json_object *zonesJ, const char *zoneName)
-{
-  int zonesIdx = 0;
-  int zonesLength = json_object_array_length(zonesJ);
-  json_object *zoneMappingJ = 0;
-
-  //AFB_NOTICE("%s, %s", zoneName, json_object_get_string(zonesJ));
-
-  // Loop through the known zones, and attempt to find the indicated zone
-  for (zonesIdx = 0; zonesIdx < zonesLength; zonesIdx++)
+PUBLIC STATIC json_object *getZoneMap(json_object *zonesJ, const char *zoneName)
   {
-    char *zoneUid = "";
-    char *zoneType = "";
+  json_object *resultJ = NULL, *zoneMappingJ = NULL;
 
-    json_object *zoneCurrJ = json_object_array_get_idx(zonesJ, zonesIdx);
-    wrap_json_unpack(zoneCurrJ, "{s:s,s:s,s:o}",
-                     "uid", &zoneUid, "type", &zoneType, "mapping", &zoneMappingJ);
-
-    //AFB_NOTICE("%s, %s", zoneUid, zoneType);
-    if (strcmp(zoneUid, zoneName) == 0)
+  resultJ = json_object_array_find(zonesJ, "uid", zoneName);
+  if (resultJ)
     {
-      //AFB_NOTICE("%s",json_object_get_string(zoneMapping));
+    wrap_json_unpack(resultJ, "{s?o}",
+                     "mapping", &zoneMappingJ);
       return zoneMappingJ;
     }
-  } 
 
   AFB_ApiError(NULL, "STREAM: Zone '%s' is not defined!", zoneName);
   return NULL;
@@ -352,7 +369,7 @@ PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object 
     if (sourceZone)
     {
       AFB_NOTICE("sourceZone: %s", sourceZone);
-      sourceZoneMapJ = getMap(zonesJ, sourceZone);
+      sourceZoneMapJ = getZoneMap(zonesJ, sourceZone);
       if (sourceZoneMapJ)
       {
         sourceChannels = json_object_array_length(sourceZoneMapJ);
@@ -362,7 +379,7 @@ PUBLIC STATIC json_object *generateStreamMap(json_object *streamsJ, json_object 
     }
     if (sinkZone)
     {
-      sinkZoneMapJ = getMap(zonesJ, sinkZone);
+      sinkZoneMapJ = getZoneMap(zonesJ, sinkZone);
       if (sinkZoneMapJ)
       {
         sinkChannels = json_object_array_length(sinkZoneMapJ);
