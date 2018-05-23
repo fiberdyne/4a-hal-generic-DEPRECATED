@@ -25,6 +25,8 @@ PROJECT_TARGET_ADD(hal-generic)
                 hal-generic.c 
                 hal-generic-utility.c
                 hal-generic-utility.h
+                hal-generic-validate.c
+                hal-generic-validate.h
     )
 
     # Binder exposes a unique public entry point

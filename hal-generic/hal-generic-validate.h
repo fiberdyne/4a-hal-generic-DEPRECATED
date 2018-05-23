@@ -16,23 +16,20 @@
  * limitations under the License.
  */
 
-#ifndef HAL_GENERIC_H
-#define HAL_GENERIC_H
+#ifndef HAL_GENERIC_VALIDATE_H
+#define HAL_GENERIC_VALIDATE_H
 
-#include "ctl-config.h"
+#include "hal-generic.h"
+
+#include <json-c/json.h>
+
 
 /*****************************************************************************
- * Definitions
+ *  Global Function Declarations
  ****************************************************************************/
-#ifndef PUBLIC
-# define PUBLIC
-#endif
-#define STATIC static
+PUBLIC HAL_ERRCODE validateCards(json_object *cardsJ);
+PUBLIC HAL_ERRCODE validateZones(json_object *zonesJ);
+PUBLIC HAL_ERRCODE validateStreams(json_object *streamsJ, json_object *zonesJ);
+PUBLIC HAL_ERRCODE validateCtls(json_object *ctlsJ, json_object *streamsJ);
 
-typedef enum
-{
-  HAL_OK,
-  HAL_FAIL
-} HAL_ERRCODE;
-
-#endif // HAL_GENERIC_H
+#endif // HAL_GENERIC_VALIDATE_H
