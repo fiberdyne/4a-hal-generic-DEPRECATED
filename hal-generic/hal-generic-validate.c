@@ -242,7 +242,7 @@ HAL_ERRCODE validateCtls(json_object *ctlsJ, json_object *streamsJ)
                 *ctlFadeJ = NULL, *ctlBalanceJ = NULL;
 
     ctlCurrJ = json_object_array_get_idx(ctlsJ, ctlsIdx);
-    wrap_json_unpack(ctlCurrJ, "{s?s,s?s,s?o,s?o,s?o}",
+    wrap_json_unpack(ctlCurrJ, "{s?s,s?s,s?o,s?o,s?o,s?o,s?o,s?o,s?o}",
                      "uid", &ctlUid, "stream", &ctlStream,
                      "volume", &ctlVolumeJ, "volramp", &ctlVolrampJ,
                      "bass", &ctlBassJ, "mid", &ctlMidJ, "treble", &ctlTrebleJ,
