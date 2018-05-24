@@ -9,10 +9,12 @@
 
   <feature name="urn:AGL:widget:provided-api">
     <param name="4a-hal-generic" value="ws" />
+    <param name="alsacore" value="ws" />
   </feature>
   
   <feature name="urn:AGL:widget:required-api">
     <param name="@WIDGET_ENTRY_POINT@" value="local" />
+    <param name="lib/afb-alsa-4a.so" value="local" />
     <param name="fd-dsp-hifi2" value="ws" />
   </feature>
   
