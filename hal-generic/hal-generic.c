@@ -19,7 +19,6 @@
 #define _GNU_SOURCE
 #include "hal-generic-utility.h"
 #include "hal-generic-validate.h"
-#include "hal-interface.h"
 #include "ctl-config.h"
 
 
@@ -50,10 +49,12 @@ STATIC int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctls
 /*****************************************************************************
  * Local Variable Declarations
  ****************************************************************************/
+static json_object *_cardsJ = NULL;     // Cards JSON section from conf file
+static json_object *_streamsJ = NULL;   // Streams JSON section from conf file
 static json_object *_zonesJ = NULL;     // Zones JSON section from conf file
-static json_object *_ctlsJ = NULL;      // Ctls JSON config
-static json_object *_cardpropsJ = NULL; // Cardprops JSON config
-static json_object *_streammapJ = NULL; // Streammap JSON config
+static json_object *_ctlsJ = NULL;      // Ctls JSON section from conf file
+
+static alsaHalSndCardT alsaHalSndCard;  // alsaHalSndCard for alsacore
 
 /* API prefix should be unique for each snd card */
 const struct afb_binding_v2 afbBindingV2 = {
@@ -75,75 +76,6 @@ static CtlSectionT ctrlSections[]= {
     {.key=NULL}
 };
 
-/* Default Values for MasterVolume Ramping */
-STATIC halVolRampT volRampMaster = {
-    .mode = RAMP_VOL_NORMAL,
-    .slave = Master_Playback_Volume,
-    .delay = 100 * 1000,
-    .stepDown = 3,
-    .stepUp = 2,
-};
-
-STATIC halVolRampT volRampPhone = {
-    .mode = RAMP_VOL_NORMAL,
-    .slave = Phone_Playback_Volume,
-    .delay = 100 * 1000,
-    .stepDown = 3,
-    .stepUp = 2,
-};
-
-STATIC halVolRampT volRampNavigation = {
-    .mode = RAMP_VOL_NORMAL,
-    .slave = Navigation_Playback_Volume,
-    .delay = 100 * 1000,
-    .stepDown = 3,
-    .stepUp = 2,
-};
-
-STATIC halVolRampT volRampRadio = {
-    .mode = RAMP_VOL_SMOOTH,
-    .slave = Radio_Playback_Volume,
-    .delay = 100 * 1000,
-    .stepDown = 1,
-    .stepUp = 1,
-};
-
-STATIC halVolRampT volRampMultimedia = {
-    .mode = RAMP_VOL_SMOOTH,
-    .slave = Multimedia_Playback_Volume,
-    .delay = 100 * 1000,
-    .stepDown = 1,
-    .stepUp = 1,
-};
-
-/* declare ALSA mixer controls */
-STATIC alsaHalMapT alsaHalMap[] = {
-    {.tag = Master_Playback_Volume, .ctl = {.name = "Master Playback Volume", .value = 100}},
-    {.tag = PCM_Master_Bass, .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Master Bass Playback Volume", .minval = 0, .maxval = 100, .step = 1, .value = 50}},
-    {.tag = PCM_Master_Mid, .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Master Midrange Playback Volume", .minval = 0, .maxval = 100, .step = 1, .value = 50}},
-    {.tag = PCM_Master_Treble, .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Master Treble Playback Volume", .minval = 0, .maxval = 100, .step = 1, .value = 50}},
-
-    {.tag = Navigation_Playback_Volume, .ctl = {.name = "Navigation Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 183, .maxval = 255, .value = 50}},
-    {.tag = Phone_Playback_Volume, .ctl = {.name = "Phone Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 1, .minval = 183, .maxval = 255, .value = 50}},
-    {.tag = Radio_Playback_Volume, .ctl = {.name = "Radio Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 2, .minval = 183, .maxval = 255, .value = 50}},
-    {.tag = Multimedia_Playback_Volume, .ctl = {.name = "Multimedia Playback Volume", .numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .count = 2, .minval = 183, .maxval = 255, .value = 50}},
-
-    {.tag = Navigation_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampNavigation}, .info = "RampUp Navigation Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Navigation_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
-    {.tag = Phone_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampPhone}, .info = "RampUp Phone Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Phone_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
-    {.tag = Radio_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampRadio}, .info = "RampUp Radio Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Radio_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
-    {.tag = Multimedia_Playback_Ramp, .cb = {.callback = volumeRamp, .handle = &volRampMultimedia}, .info = "RampUp Multimedia Volume", .ctl = {.numid = CTL_AUTO, .type = SND_CTL_ELEM_TYPE_INTEGER, .name = "Multimedia_Ramp", .minval = 0, .maxval = 100, .step = 1, .value = 80}},
-
-    {.tag = EndHalCrlTag} /* marker for end of the array */
-};
-
-/* HAL sound card mapping info */
-STATIC alsaHalSndCardT alsaHalSndCard = {
-    .name = ALSA_CARD_NAME, /*  WARNING: name MUST match with 'aplay -l' */
-    .info = "HAL for FD-DSP sound card controlled by ADSP binding+plugin",
-    .ctls = alsaHalMap,
-    .volumeCB = NULL, /* use default volume normalization function */
-};
-
 
 /*****************************************************************************
  * Local Function Definitions (App Controller CB)
@@ -157,7 +89,7 @@ STATIC int CardConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *car
   
   err = validateCards(cardsJ); // Cards OK?
   if (err == HAL_OK)
-    _cardpropsJ = generateCardProperties(cardsJ);
+    _cardsJ = cardsJ;
 
   return (int)err;
 }
@@ -174,7 +106,7 @@ STATIC int StreamConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *s
   {
     err = validateStreams(streamsJ, _zonesJ); // streams OK?
     if (err == HAL_OK)
-      _streammapJ = generateStreamMap(streamsJ, _zonesJ);
+      _streamsJ = streamsJ;
   }
 
   return (int)err;
@@ -201,9 +133,9 @@ STATIC int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctls
 {
   HAL_ERRCODE err = HAL_FAIL;
 
-  if (_streammapJ) // streammap OK?
+  if (_streamsJ) // streammap OK?
   {
-    err = validateCtls(ctlsJ, _streammapJ);
+    err = validateCtls(ctlsJ, _streamsJ);
     if (err == HAL_OK)
       _ctlsJ = ctlsJ;
   }
@@ -220,10 +152,10 @@ STATIC int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctls
  */
 STATIC int hal_generic_preinit()
 {
-  const char *dirList= getenv("CONTROL_CONFIG_PATH");
-  if (!dirList) dirList = CONTROL_CONFIG_PATH;
-  // char *dirList = GetBindingDirPath(NULL);
-  // strcat(dirList, "/etc");
+  //const char *dirList= getenv("CONTROL_CONFIG_PATH");
+  //if (!dirList) dirList = CONTROL_CONFIG_PATH;
+  char *dirList = GetBindingDirPath(NULL);
+  strcat(dirList, "/etc");
 
   const char *configPath = CtlConfigSearch(NULL, dirList, "config");
   if (!configPath)
@@ -263,6 +195,7 @@ OnErrorExit:
 STATIC int hal_generic_init()
 {
   int err = 0;
+  json_object *streammapJ = NULL, *cardpropsJ = NULL;
 
   AFB_NOTICE("Initializing 4a-hal-generic");
   
@@ -275,23 +208,31 @@ STATIC int hal_generic_init()
     }
 
   // If the hal plugin is present, we need to configure our custom sound card to provide all the required interfaces.
-  // This will load the configuration json file, and set up the sound card
-  AFB_NOTICE("Start Initialize of sound card");
-  
-  if (!_cardpropsJ || !_streammapJ || !_ctlsJ)
+  // This will load the configuration json file, and set up the sound card  
+  if (!_cardsJ || !_streamsJ || !_ctlsJ || !_zonesJ)
   {
-    AFB_ApiError(NULL, "Cannot initialize HAL plugin: cardprops or streammap is NULL!");
+    AFB_ApiError(NULL, "Cannot initialize HAL plugin: JSON config is not valid!");
     goto OnErrorExit;
   }
 
-  err = initialize_sound_card(_cardpropsJ, _streammapJ);
+  cardpropsJ = generateCardProperties(json_object_array_get_idx(_cardsJ, 0),
+                                      "xfalsa");
+  streammapJ = generateStreamMap(_streamsJ, _zonesJ, "xfalsa");
+
+  AFB_NOTICE("Start Initialize of sound card");
+  err = initialize_sound_card(cardpropsJ, streammapJ);
   if (err)
   {
     AFB_ApiError(NULL, "Initializing Sound Card failed!");
     goto OnErrorExit;
   }
 
-  AFB_NOTICE("Start halServiceInit section");
+    /* HAL sound card mapping info */
+  alsaHalSndCard.name = "xfalsa"; /*  WARNING: name MUST match with 'aplay -l' */
+  alsaHalSndCard.info = "HAL for FD-DSP sound card controlled by ADSP binding+plugin";
+  alsaHalSndCard.ctls = generateAlsaHalMap(_ctlsJ);
+  alsaHalSndCard.volumeCB = NULL; /* use default volume normalization function */
+
   err = halServiceInit(afbBindingV2.api, &alsaHalSndCard);
   if (err)
   {
@@ -300,6 +241,7 @@ STATIC int hal_generic_init()
   }
 
   AFB_NOTICE(".. Initializing Complete!");
+  return err;
 
 OnErrorExit:
   AFB_ApiError(NULL, "hal_generic_init() - end");

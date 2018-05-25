@@ -18,14 +18,47 @@
 
 
 #include "hal-generic-utility.h"
-#include "hal-interface.h"
 #include "wrap-json.h"
+
+#include <stdbool.h>
+
+
+/*****************************************************************************
+ * Definitions
+ ****************************************************************************/
+typedef enum  {
+  Volume,
+  Ramp,
+  Switch,
+  Bass,
+  Mid,
+  Treble,
+  Fade,
+  Balance
+} halCtlsTypeT;
+
+const char *halCtlsTypeLabels[] = {
+  [Volume] = "Volume",
+  [Ramp] = "Ramp",
+  [Switch] = "Switch",
+  [Bass] = "Bass",
+  [Mid] = "Mid",
+  [Treble] = "Treble",
+  [Fade] = "Fade",
+  [Balance] = "Balance"
+};
 
 
 /*****************************************************************************
  * Local Function Declarations
  ****************************************************************************/
 PUBLIC STATIC json_object *getZoneMap(json_object *zonesJ, const char *zoneName);
+PUBLIC STATIC halCtlsTagT getHalCtlsTag(const char *role, halCtlsTypeT ctlsType);
+PUBLIC STATIC bool generateAlsaHalMapCtl(json_object *ctlJ,
+                                         const char *ctlStream,
+                                         halCtlsTypeT ctlType,
+                                         alsaHalMapT *alsaHalMap);
+
 
 
 /*****************************************************************************
@@ -48,6 +81,34 @@ PUBLIC STATIC json_object *getZoneMap(json_object *zonesJ, const char *zoneName)
 
   AFB_ApiError(NULL, "STREAM: Zone '%s' is not defined!", zoneName);
   return NULL;
+}
+
+/*
+ * @brief Get the halCtlsTagT for a given audio role, and ctl type
+ */
+PUBLIC STATIC halCtlsTagT getHalCtlsTag(const char *role, halCtlsTypeT type)
+{
+  int i = 1;
+  char ctlLabel[255];
+
+  while (halCtlsLabels[i] != NULL)
+  {
+    strcpy(ctlLabel, halCtlsLabels[i]);
+    const char *ctlRole = strtok(ctlLabel, "_");
+    const char *ctlType = strtok(NULL, "_");
+    if (!strcmp(ctlRole, "Master"))
+      ctlType = strtok(NULL, "_");
+
+    if (!strcmp(ctlRole, role))
+    {
+      if (!strcmp(ctlType, halCtlsTypeLabels[type]))
+        return (halCtlsTagT)i;
+    }
+
+    i++;
+  }
+
+  return EndHalCrlTag;
 }
 
 
@@ -95,7 +156,7 @@ HAL_ERRCODE initialize_sound_card(json_object *cardpropsJ,
                  "cardprops", cardpropsJ,
                  "streammap", streammapJ);
 
-  printf("jobj from str:\n---\n%s\n---\n", json_object_to_json_string_ext(cfgJ, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
+  // printf("jobj from str:\n---\n%s\n---\n", json_object_to_json_string_ext(cfgJ, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
 
   result = afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", cfgJ, &cfgResultJ);
   AFB_NOTICE("Result Code: %d, result: %s", result, json_object_get_string(cfgResultJ));
@@ -126,45 +187,149 @@ HAL_ERRCODE initialize_sound_card(json_object *cardpropsJ,
   return HAL_OK;
 }
 
-PUBLIC json_object *generateCardProperties(json_object *cfgCardsJ)
+PUBLIC alsaHalMapT *generateAlsaHalMap(json_object *ctlsJ)
 {
-  json_object *cfgCardPropsJ;
-  wrap_json_pack(&cfgCardPropsJ, "{}");
+  int ctlsLength = json_object_array_length(ctlsJ);
+  size_t ctlsAlloc = sizeof(alsaHalMapT) * ctlsLength * 8;
+  int ctlsIdx = 0, halMapIdx = 0;
+  alsaHalMapT *alsaHalMap = (alsaHalMapT *)malloc(ctlsAlloc);
+  memset(alsaHalMap, 0, ctlsAlloc);
 
-  AFB_ApiNotice(NULL, "CARD: Generating 'cardprops'");
-
-  json_object *currCardJ = json_object_array_get_idx(cfgCardsJ, 0);
-  if (currCardJ)
+  if (!alsaHalMap)
   {
-    json_object *cardChannels = 0;
-
-    wrap_json_unpack(currCardJ, "{s:o}", "channels", &cardChannels);
-    if (cardChannels)
-    {
-      json_object *cardSource = 0, *cardSink = 0;
-
-      // Abstract sink and source from the card channel definition
-      wrap_json_unpack(cardChannels, "{s:o,s:o}", "sink", &cardSink, "source", &cardSource);
-
-      // Wrap into our configuration object
-      wrap_json_pack(&cfgCardPropsJ, "{s:o*,s:o*}", "sink", cardSink, "source", cardSource);
-    }
+    AFB_ApiError(NULL, "HALMAP: Cannot allocate memory (sz: %ld)", ctlsAlloc);
+    return NULL;
   }
-  
-  return cfgCardPropsJ;
+
+  for (ctlsIdx = 0; ctlsIdx < ctlsLength; ctlsIdx++)
+  {
+    char *ctlUid = NULL, *ctlStream = NULL;
+    json_object *ctlCurrJ = NULL, *ctlVolumeJ = NULL, *ctlVolrampJ = NULL,
+                *ctlBassJ = NULL, *ctlMidJ = NULL, *ctlTrebleJ = NULL,
+                *ctlFadeJ = NULL, *ctlBalanceJ = NULL;
+
+    ctlCurrJ = json_object_array_get_idx(ctlsJ, ctlsIdx);
+    wrap_json_unpack(ctlCurrJ, "{s:s,s:s,s:o,s?o,s?o,s?o,s?o,s?o,s?o}",
+                     "uid", &ctlUid, "stream", &ctlStream,
+                     "volume", &ctlVolumeJ, "volramp", &ctlVolrampJ,
+                     "bass", &ctlBassJ, "mid", &ctlMidJ, "treble", &ctlTrebleJ,
+                     "fade", &ctlFadeJ, "balance", &ctlBalanceJ);
+
+    if (generateAlsaHalMapCtl(ctlVolumeJ, ctlStream, Volume, &alsaHalMap[halMapIdx]))
+      halMapIdx++;
+    if (ctlVolrampJ)
+      if (generateAlsaHalMapCtl(ctlVolrampJ, ctlStream, Ramp, &alsaHalMap[halMapIdx]))
+        halMapIdx++;
+    if (ctlBassJ)
+      if (generateAlsaHalMapCtl(ctlBassJ, ctlStream, Bass, &alsaHalMap[halMapIdx]))
+        halMapIdx++;
+    if (ctlMidJ)
+      if (generateAlsaHalMapCtl(ctlMidJ, ctlStream, Mid, &alsaHalMap[halMapIdx]))
+        halMapIdx++;
+    if (ctlTrebleJ)
+      if (generateAlsaHalMapCtl(ctlTrebleJ, ctlStream, Treble, &alsaHalMap[halMapIdx]))
+        halMapIdx++;
+    if (ctlFadeJ)
+      if (generateAlsaHalMapCtl(ctlFadeJ, ctlStream, Fade, &alsaHalMap[halMapIdx]))
+        halMapIdx++;
+    if (ctlBalanceJ)
+      if (generateAlsaHalMapCtl(ctlBalanceJ, ctlStream, Balance, &alsaHalMap[halMapIdx]))
+        halMapIdx++;
+  }
+
+  AFB_ApiNotice(NULL, "ctlsIdx: %d, halMapIdx: %d:", ctlsIdx, halMapIdx);
+
+  return alsaHalMap;
 }
 
-//
-// Construct the stream map by looping over each stream and extracting the mapping.
-//
+PUBLIC STATIC bool generateAlsaHalMapCtl(json_object *ctlJ,
+                                         const char *ctlStream,
+                                         halCtlsTypeT ctlType,
+                                         alsaHalMapT *alsaHalMap)
+{
+  // Get halCtlsTagT for ctlType
+  halCtlsTagT tag = getHalCtlsTag(ctlStream, ctlType);
+  if (tag == EndHalCrlTag)
+  {
+    AFB_ApiError(NULL, "HALMAP: Cannot get HAL ctl tag for role: %s, type: %s",
+                 ctlStream, halCtlsTypeLabels[ctlType]);
+    return false;
+  }
+
+  // Set to defaults
+  char *ctlName = NULL, *ctlCb = NULL;
+  int ctlValue = 50, ctlMinval = 0, ctlMaxval = 100,
+      ctlCount = 1, ctlStep = 1;
+
+  // Unpack the control
+  wrap_json_unpack(ctlJ, "{s:s,s?s,s?i,s?i,s?i}",
+                   "name", &ctlName, "cb", &ctlCb, "value", &ctlValue,
+                   "minval", &ctlMinval, "maxval", &ctlMaxval,
+                   "count", &ctlStep, "step", &ctlStep);
+
+  // Set up the halmap
+  alsaHalMap->tag = tag;
+  alsaHalMap->ctl.name = ctlName;
+  alsaHalMap->ctl.numid = CTL_AUTO;
+  alsaHalMap->ctl.type = SND_CTL_ELEM_TYPE_INTEGER;
+  alsaHalMap->ctl.value = ctlValue;
+  alsaHalMap->ctl.minval = ctlMinval;
+  alsaHalMap->ctl.maxval = ctlMaxval;
+
+  if (ctlType == Volume)
+    alsaHalMap->ctl.count = ctlCount;
+
+  if (ctlType == Ramp)
+  {
+    alsaHalMap->ctl.step = ctlStep;
+    alsaHalMap->cb.callback = volumeRamp;
+    halVolRampT halVolRamp = {
+      .mode = RAMP_VOL_SMOOTH,
+      .slave = (halCtlsTagT)(tag - 1),
+      .delay = 100 * 1000,
+      .stepDown = 1,
+      .stepUp = 1,
+    };
+    alsaHalMap->cb.handle = &halVolRamp;
+  }
+
+  alsaHalMap->ctl.enums = NULL;
+
+  return true;
+}
+
+/*
+ * @brief Generate a 'cardprops' object from a 'card' config
+ * @param cardsJ : A json_object containing an a card object
+ * @return A json_object containing a 'cardprops' object
+ */
+PUBLIC json_object *generateCardProperties(json_object *cardJ,
+                                           const char *cardname)
+{
+  AFB_ApiNotice(NULL, "CARD: Generating 'cardprops' for card: %s", cardname);
+
+  json_object *cardChannelsJ = NULL;
+
+  wrap_json_unpack(cardJ, "{s:o}", "channels", &cardChannelsJ);
+    
+  return cardChannelsJ;
+}
+
+/*
+ * @brief Generate a 'streammap' object from an array of streams and zones
+ * @param streamsJ : A json_object containing an array of streams
+ * @param zonesJ   : A json_object containing an array of zones
+ * @return A json_object containing a 'steammap' object
+ */
 PUBLIC json_object *generateStreamMap(json_object *streamsJ,
-                                             json_object *zonesJ)
+                                      json_object *zonesJ,
+                                      const char *cardname)
 {
   int streamsIdx = 0;
   int streamsLength = json_object_array_length(streamsJ);
   json_object *streamMapArrayJ = NULL;
 
-  AFB_ApiNotice(NULL, "STREAM: Generating 'streammap'");
+  AFB_ApiNotice(NULL, "STREAM: Generating 'streammap' for card: %s:", cardname);
 
   wrap_json_pack(&streamMapArrayJ, "[]");
 

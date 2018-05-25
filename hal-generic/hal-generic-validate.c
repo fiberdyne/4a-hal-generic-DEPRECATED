@@ -258,7 +258,7 @@ HAL_ERRCODE validateCtls(json_object *ctlsJ, json_object *streamsJ)
     // Check that the ctlStream points to a valid stream
     if (strcmp(ctlStream, "Master") != 0) // Master does not need to be defined
     {
-      if (!json_object_array_find(streamsJ, "stream", ctlStream))
+      if (!json_object_array_find(streamsJ, "role", ctlStream))
       {
         AFB_ApiError(NULL, "CTL: Stream '%s' is not defined!", ctlStream);
         return HAL_FAIL;
