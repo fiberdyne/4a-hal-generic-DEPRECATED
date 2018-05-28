@@ -167,12 +167,15 @@ HAL_ERRCODE initialize_sound_card(json_object *cardpropsJ,
     const char *strResult;
     const char *strStatus;
     int errCode = -1;
-    wrap_json_unpack(cfgResultJ, "{s:{s:s,s:s}}", "request", "status", &strStatus, "info", &strResult);
+
+    wrap_json_unpack(cfgResultJ, "{s:{s:s,s:s}}",
+                     "request", "status", &strStatus, "info", &strResult);
     resultJ = json_tokener_parse(strResult);
-    wrap_json_unpack(resultJ, "{s:i,s:s}", "errcode", &errCode, "message", &message);
+    wrap_json_unpack(resultJ, "{s:i,s:s}", "errcode",
+                     &errCode, "message", &message);
+
     AFB_NOTICE("Status: %s, Message: %s, ErrCode: %d", strStatus, message, errCode);
 
-    // Break out and fail here.
     return HAL_FAIL;
   }
   else
@@ -183,7 +186,6 @@ HAL_ERRCODE initialize_sound_card(json_object *cardpropsJ,
     AFB_NOTICE("Message: %s, ErrCode: %d", message, result);
   }
 
-  // No error found, return success to afb init
   return HAL_OK;
 }
 

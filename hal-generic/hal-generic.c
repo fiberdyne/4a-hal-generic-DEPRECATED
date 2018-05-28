@@ -25,7 +25,6 @@
 /*****************************************************************************
  * Definitions
  ****************************************************************************/
-#define ALSA_CARD_NAME "xfalsa"
 //#define ALSA_DEVICE_ID "ALC887-VD Analog"
 
 #define PCM_Master_Bass 1000
@@ -133,7 +132,7 @@ STATIC int CtlConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *ctls
 {
   HAL_ERRCODE err = HAL_FAIL;
 
-  if (_streamsJ) // streammap OK?
+  if (_streamsJ) // streams OK?
   {
     err = validateCtls(ctlsJ, _streamsJ);
     if (err == HAL_OK)
