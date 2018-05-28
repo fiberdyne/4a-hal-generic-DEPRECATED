@@ -24,6 +24,14 @@
 
 #include <json-c/json.h>
 
+/*****************************************************************************
+ * Definitions
+ ****************************************************************************/
+typedef enum {
+  SINK,
+  SOURCE
+} SinkSourceT;
+
 
 /*****************************************************************************
  * Global Function Declarations
@@ -33,6 +41,10 @@ PUBLIC json_object *json_object_array_find(json_object *arrayJ,
                                            const char *value);
 
 PUBLIC json_object *getCardInfo(json_object *cardsJ);
+PUBLIC json_object *getCardSinkSource(const char *map,
+                                      json_object *cardsJ,
+                                      SinkSourceT sinkSourceType);
+                                      
 PUBLIC alsaHalMapT *generateAlsaHalMap(json_object *ctlsJ);
 PUBLIC json_object *generateCardProperties(json_object *cardJ,
                                            const char *cardname);

@@ -144,7 +144,7 @@ json_object *json_object_array_find(json_object *arrayJ,
 
 HAL_ERRCODE initHalPlugin(const char *halPluginName,
                           json_object *cardpropsJ,
-                                  json_object *streammapJ)
+                          json_object *streammapJ)
 {
   json_object *cfgJ = NULL;
   json_object *cfgResultJ = NULL;
@@ -332,6 +332,58 @@ PUBLIC json_object *getCardInfo(json_object *cardsJ)
 
   return cardInfoArrayJ;
 }
+
+/*
+ * @brief Get a card's sink/source map by string
+ * @param map            : The map to search for
+ * @param cardsJ         : A json_object containing an array of card objects
+ * @param sinkSourceType : An enum indicating the zone type (SINK or SOURCE)
+ * @return A json_object containing the sink/source map object, or NULL if unsuccessful
+ */
+PUBLIC json_object *getCardSinkSource(const char *map,
+                                      json_object *cardsJ,
+                                      SinkSourceT sinkSourceType)
+{
+  int cardIdx = 0, cardLength = 0;
+  char *type = NULL;
+
+  if (sinkSourceType == SINK)
+    type = "sink";
+  else
+    type = "source";
+
+  // Loop card array
+  cardLength = json_object_array_length(cardsJ);
+  for (cardIdx = 0; cardIdx < cardLength; cardIdx++)
+  {
+    int sinkSourceIdx = 0, sinkSourceLength = 0;
+    json_object *cardCurrJ = NULL, *sinkSourceArrayJ = NULL,
+                *cardChannelsJ = NULL;
+    
+    cardCurrJ = json_object_array_get_idx(cardsJ, cardIdx);
+    wrap_json_unpack(cardCurrJ, "{s?o}",
+                     "channels", &cardChannelsJ);
+    wrap_json_unpack(cardChannelsJ, "{s?o}",
+                     type, &sinkSourceArrayJ);
+    
+    // Loop sink/source array
+    sinkSourceLength = json_object_array_length(sinkSourceArrayJ);
+    for (sinkSourceIdx = 0; sinkSourceIdx < sinkSourceLength; sinkSourceIdx++)
+    {
+      char *thisMap = NULL;
+      json_object *sinkSourceCurrJ = json_object_array_get_idx(sinkSourceArrayJ, 
+                                                               sinkSourceIdx);
+      wrap_json_unpack(sinkSourceCurrJ, "{s?s}",
+                       "type", &thisMap);
+      if (strcmp(thisMap, map) == 0)
+        return sinkSourceCurrJ;
+    }
+  }
+
+  return NULL;
+}
+
+/*
  * @brief Generate a 'cardprops' object from a 'card' config
  * @param cardsJ : A json_object containing an a card object
  * @return A json_object containing a 'cardprops' object

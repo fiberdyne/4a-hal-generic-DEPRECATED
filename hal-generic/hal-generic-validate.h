@@ -28,7 +28,7 @@
  *  Global Function Declarations
  ****************************************************************************/
 PUBLIC HAL_ERRCODE validateCards(json_object *cardsJ);
-PUBLIC HAL_ERRCODE validateZones(json_object *zonesJ);
+PUBLIC HAL_ERRCODE validateZones(json_object *zonesJ, json_object *cardsJ);
 PUBLIC HAL_ERRCODE validateStreams(json_object *streamsJ, json_object *zonesJ);
 PUBLIC HAL_ERRCODE validateCtls(json_object *ctlsJ, json_object *streamsJ);
 

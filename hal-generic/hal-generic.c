@@ -118,9 +118,12 @@ STATIC int ZoneConfig(AFB_ApiT apiHandle, CtlSectionT *section, json_object *zon
 {
   HAL_ERRCODE err = HAL_FAIL;
 
-  err = validateZones(zonesJ);
-  if (err == HAL_OK)
-    _zonesJ = zonesJ;
+  if (_cardsJ) // cards OK?
+  {
+    err = validateZones(zonesJ, _cardsJ);
+    if (err == HAL_OK)
+      _zonesJ = zonesJ;
+  }
 
   return (int)err;
 }
@@ -208,8 +211,8 @@ STATIC int hal_generic_init()
   {
     AFB_ApiError(NULL, "Cannot initialize HAL plugin: JSON config is not valid!");
     return err;
-    }
-
+  }
+  
   cardInfoArrayJ = getCardInfo(_cardsJ);
   cardInfoLength = json_object_array_length(cardInfoArrayJ);
 

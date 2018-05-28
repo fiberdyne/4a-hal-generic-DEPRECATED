@@ -28,12 +28,24 @@
 
 
 /*****************************************************************************
- * Local Definitions
+ * Local Function Definitions
  ****************************************************************************/
-typedef enum {
-  SINK,
-  SOURCE
-} SinkSourceT;
+static char assert_j_errbuf[255];
+#define ASSERT_J(j, errmsg, type, ...)                       \
+  {                                                          \
+    if (!json_object_is_type(j, type))                       \
+    {                                                        \
+      snprintf(assert_j_errbuf, 255, errmsg, ##__VA_ARGS__); \
+      AFB_ApiError(NULL, assert_j_errbuf);                   \
+      return HAL_FAIL;                                       \
+    }                                                        \
+  }
+
+#define ASSERT_JARRAY(jarray, errmsg, ...)                   \
+  ASSERT_J(jarray, errmsg, json_type_array, ##__VA_ARGS__)
+
+#define ASSERT_JOBJECT(jobject, errmsg, ...)                 \
+  ASSERT_J(jobject, errmsg, json_type_object, ##__VA_ARGS__)
 
 
 /*****************************************************************************
@@ -41,7 +53,11 @@ typedef enum {
  ****************************************************************************/
 PUBLIC STATIC HAL_ERRCODE validateCardSinkSource(json_object *arrayJ);
 PUBLIC STATIC HAL_ERRCODE validateZoneIsSinkSource(json_object *zoneJ,
+                                                   const char *zoneId,
                                                    SinkSourceT matchType);
+PUBLIC STATIC HAL_ERRCODE validateZoneMapping(json_object *zoneMappingJ,
+                                              json_object *cardsJ,
+                                              SinkSourceT sinkSourceType);
 PUBLIC STATIC HAL_ERRCODE validateCtl(json_object *ctlJ, const char *ctlType);
 
 
@@ -58,6 +74,8 @@ STATIC HAL_ERRCODE validateCtl(json_object *ctlJ, const char *ctlType)
 {
   // Set to defaults
   int ctlValue = 50, ctlMinval = 0, ctlMaxval = 100;
+
+  ASSERT_JOBJECT(ctlJ, "CTL: '%s' needs to be a JSON object!", ctlType);
 
   wrap_json_unpack(ctlJ, "{s?i,s?i,s?i}",
                    "value", &ctlValue, "minval", &ctlMinval,
@@ -81,12 +99,15 @@ STATIC HAL_ERRCODE validateCtl(json_object *ctlJ, const char *ctlType)
 }
 
 /*
- * @brief  Check that the zone is either a 'sink' or a 'source'
- * @params zoneJ : The zone json_object
- *         type  : The matchType to check for
- * @return HAL_OK if zone type matches matchType, HAL_FAIL otherwise 
+ * @brief Check that the zone is either a 'sink' or a 'source'
+ * @param zoneJ  : The zone json_object
+ * @param zoneId : The zone ID for debug
+ * @param type   : The matchType to check for
+ * @return HAL_OK if zone type matches matchType, HAL_FAIL otherwise
  */
-STATIC HAL_ERRCODE validateZoneIsSinkSource(json_object *zoneJ, SinkSourceT matchType)
+STATIC HAL_ERRCODE validateZoneIsSinkSource(json_object *zoneJ,
+                                            const char *zoneId,
+                                            SinkSourceT matchType)
 {
   char *zoneType = NULL;
   char *zoneTypeMatcher = (matchType == SINK) ? "sink" : "source";
@@ -96,7 +117,10 @@ STATIC HAL_ERRCODE validateZoneIsSinkSource(json_object *zoneJ, SinkSourceT matc
   
   // Check that the zone type matches the intended type
   if (strcmp(zoneType, zoneTypeMatcher) != 0)
+  {
+    AFB_ApiError(NULL, "STREAM: Zone '%s' is not a '%s'!", zoneId, zoneTypeMatcher);
     return HAL_FAIL;
+  }
   
   return HAL_OK;
 }
@@ -106,8 +130,9 @@ STATIC HAL_ERRCODE validateZoneIsSinkSource(json_object *zoneJ, SinkSourceT matc
  */
 STATIC HAL_ERRCODE validateCardSinkSource(json_object *arrayJ)
 {
-  int idx = 0;
-  int len = json_object_array_length(arrayJ);
+  int idx = 0, len = 0;
+  
+  len = json_object_array_length(arrayJ);
 
   // Loop through the known card channel sinks/sources
   for (idx = 0; idx < len; idx++)
@@ -133,6 +158,55 @@ STATIC HAL_ERRCODE validateCardSinkSource(json_object *arrayJ)
   return HAL_OK;
 }
 
+/*
+ * @brief Check that the zone mapping only uses card-declared sinks or sources
+ * @params zoneMappingJ   : A json_object containing an array of 'zone' mapping arrays
+ *         cardsJ         : A json_object containing an array of 'card' objects
+ *         sinkSourceType : An enum indicating the zone type (SINK or SOURCE)
+ * @return HAL_OK if zone mapping is valid, HAL_FAIL otherwise
+ */
+STATIC HAL_ERRCODE validateZoneMapping(json_object *zoneMappingJ,
+                                       json_object *cardsJ,
+                                       SinkSourceT sinkSourceType)
+{
+  int zoneMappingIdx = 0;
+  int zoneMappingLength = json_object_array_length(zoneMappingJ);
+
+  for (zoneMappingIdx = 0; zoneMappingIdx < zoneMappingLength; zoneMappingIdx++)
+  {
+    json_object *zoneMappingCurrJ;
+    int inputIdx = 0, inputLength = 0;
+
+    // Get inner "input" array
+    zoneMappingCurrJ = json_object_array_get_idx(zoneMappingJ, zoneMappingIdx);
+    ASSERT_JARRAY(zoneMappingCurrJ, "ZONE: Zone mapping input must be an array!");
+
+    // Loop the input indices
+    inputLength = json_object_array_length(zoneMappingCurrJ);
+    for (inputIdx = 0; inputIdx < inputLength; inputIdx++)
+    {
+      json_object *inputCurrJ = NULL;
+      char *map = NULL;
+
+      inputCurrJ = json_object_array_get_idx(zoneMappingCurrJ, inputIdx);
+      wrap_json_unpack(inputCurrJ, "s", &map);
+      if (!map)
+      {
+        AFB_ApiError(NULL, "ZONE: Mapping must contain at least one element!");
+        return HAL_FAIL;
+      }
+
+      if (!getCardSinkSource(map, cardsJ, sinkSourceType))
+      {
+        AFB_ApiError(NULL, "ZONE: Map '%s' is not defined in any card!", map);
+        return HAL_FAIL;
+      }
+    }
+  }
+
+  return HAL_OK;
+}
+
 
 /*****************************************************************************
  * Global Function Definitions
@@ -142,10 +216,13 @@ STATIC HAL_ERRCODE validateCardSinkSource(json_object *arrayJ)
  */
 HAL_ERRCODE validateStreams(json_object *streamsJ, json_object *zonesJ)
 {
-  int streamsIdx = 0;
-  int streamsLength = json_object_array_length(streamsJ);
+  int streamsIdx = 0, streamsLength = 0;
+  
+  // Check that streamsJ is an array
+  ASSERT_JARRAY(streamsJ, "STREAM: Parent object must be an array!");
 
   // Loop through the known streams, and make sure all is well
+  streamsLength = json_object_array_length(streamsJ);
   for (streamsIdx = 0; streamsIdx < streamsLength; streamsIdx++)
   {
     char *streamUid = NULL, *streamRole = NULL,
@@ -165,6 +242,10 @@ HAL_ERRCODE validateStreams(json_object *streamsJ, json_object *zonesJ)
       return HAL_FAIL; 
     }
 
+    ASSERT_JOBJECT(streamSinkJ, "STREAM: 'sink' must be a JSON object!");
+    if (streamSourceJ)
+      ASSERT_JOBJECT(streamSourceJ, "STREAM: 'source' must be a JSON object!");
+
     // Check that the streamRole is always valid
     // TODO check halCtlsTagT type for role
 
@@ -178,17 +259,13 @@ HAL_ERRCODE validateStreams(json_object *streamsJ, json_object *zonesJ)
     }
     // Check that the zone exists
     resultJ = json_object_array_find(zonesJ, "uid", streamSinkZone);
-    if (resultJ)
+    if (!resultJ)
     {
-      // Check that the zone is a sink
-      if (validateZoneIsSinkSource(resultJ, SINK) == HAL_FAIL)
-      {
-        AFB_ApiError(NULL, "STREAM: Zone '%s' is not a 'sink'!", 
-                      streamSinkZone);
-        return HAL_FAIL;
-      }
+      AFB_ApiError(NULL, "STREAM: Zone '%s' is not defined!", streamSinkZone);
+      return HAL_FAIL;
     }
-    else
+    // Check that the zone is a sink
+    if (validateZoneIsSinkSource(resultJ, streamSinkZone, SINK) == HAL_FAIL)
       return HAL_FAIL;
 
     // If stream source is defined, check it contains the field 'zone'
@@ -203,17 +280,13 @@ HAL_ERRCODE validateStreams(json_object *streamsJ, json_object *zonesJ)
       }
       // Check that the zone exists
       resultJ = json_object_array_find(zonesJ, "uid", streamSourceZone);
-      if (resultJ)
+      if (!resultJ)
       {
-        // Check that the zone is a source
-        if (validateZoneIsSinkSource(resultJ, SOURCE) == HAL_FAIL)
-        {
-          AFB_ApiError(NULL, "STREAM: Zone '%s' is not a 'source'!", 
-                       streamSourceZone);
-          return HAL_FAIL;
-        }
+        AFB_ApiError(NULL, "STREAM: Zone '%s' is not defined!", streamSourceZone);
+        return HAL_FAIL;
       }
-      else
+      // Check that the zone is a source
+      if (validateZoneIsSinkSource(resultJ, streamSourceZone, SOURCE) == HAL_FAIL)
         return HAL_FAIL;
     }
   }
@@ -230,10 +303,13 @@ HAL_ERRCODE validateStreams(json_object *streamsJ, json_object *zonesJ)
  */
 HAL_ERRCODE validateCtls(json_object *ctlsJ, json_object *streamsJ)
 {
-  int ctlsIdx = 0;
-  int ctlsLength = json_object_array_length(ctlsJ);
+  int ctlsIdx = 0, ctlsLength = 0;
+
+  // Check that ctlsJ is an array
+  ASSERT_JARRAY(ctlsJ, "CTL: Parent object must be an array!");
 
   // Loop through the ctls, and make sure all is well
+  ctlsLength = json_object_array_length(ctlsJ);
   for (ctlsIdx = 0; ctlsIdx < ctlsLength; ctlsIdx++)
   {
     char *ctlUid = NULL, *ctlStream = NULL;
@@ -299,24 +375,28 @@ HAL_ERRCODE validateCtls(json_object *ctlsJ, json_object *streamsJ)
  */
 HAL_ERRCODE validateCards(json_object *cardsJ)
 {
-  int cardsIdx = 0;
-  int cardsLength = json_object_array_length(cardsJ);
+  int cardsIdx = 0, cardsLength = 0;
+
+  // Check that cardsJ is an array
+  ASSERT_JARRAY(cardsJ, "CARD: Parent object must be an array!");
 
   // Loop through the known cards, and make sure all is well
+  cardsLength = json_object_array_length(cardsJ);
   for (cardsIdx = 0; cardsIdx < cardsLength; cardsIdx++)
   {
-    char *cardName = NULL;
+    char *cardName = NULL, *cardApi = NULL;
     json_object *cardCurrJ = NULL, *cardChannelsJ = NULL,
                 *cardSinksJ = NULL, *cardSourcesJ = NULL;
 
     cardCurrJ = json_object_array_get_idx(cardsJ, cardsIdx);
-    wrap_json_unpack(cardCurrJ, "{s?s,s?o}",
-                     "name", &cardName, "channels", &cardChannelsJ);
+    wrap_json_unpack(cardCurrJ, "{s?s,s?s,s?o}",
+                     "name", &cardName, "api", &cardApi,
+                     "channels", &cardChannelsJ);
 
     // Check that all required fields exist
-    if (!cardName || !cardChannelsJ)
+    if (!cardName || !cardApi || !cardChannelsJ)
     {
-      AFB_ApiError(NULL, "CARD: Properties must include 'name', 'channels'!");
+      AFB_ApiError(NULL, "CARD: Properties must include 'name', 'api', and channels'!");
       return HAL_FAIL; 
     }
 
@@ -344,16 +424,20 @@ HAL_ERRCODE validateCards(json_object *cardsJ)
 /*
  * @brief Parse and validate all ZONE definitions
  */
-HAL_ERRCODE validateZones(json_object *zonesJ)
+HAL_ERRCODE validateZones(json_object *zonesJ, json_object *cardsJ)
 {
-  int zonesIdx = 0;
-  int zonesLength = json_object_array_length(zonesJ);
+  int zonesIdx = 0, zonesLength = 0;
 
+  // Check that zonesJ is an array
+  ASSERT_JARRAY(zonesJ, "ZONE: Parent object must be an array!");
+  
   // Loop through the known zones, and make sure all is well
+  zonesLength = json_object_array_length(zonesJ);
   for (zonesIdx = 0; zonesIdx < zonesLength; zonesIdx++)
   {
     char *zoneUid = NULL, *zoneType = NULL;
     json_object *zoneMappingJ = NULL, *zoneCurrJ = NULL;
+    SinkSourceT sinkSourceType;
 
     zoneCurrJ = json_object_array_get_idx(zonesJ, zonesIdx);
     wrap_json_unpack(zoneCurrJ, "{s?s,s?s,s?o}",
@@ -367,11 +451,18 @@ HAL_ERRCODE validateZones(json_object *zonesJ)
     }
 
     // Check that the zoneType is always "sink" or "source"
-    if ((strcmp(zoneType, "sink") != 0) && (strcmp(zoneType, "source") != 0))
+    if (strcmp(zoneType, "sink") == 0)
+      sinkSourceType = SINK;
+    else if (strcmp(zoneType, "source") == 0)
+      sinkSourceType = SOURCE;
+    else
     {
       AFB_ApiError(NULL, "ZONE: Zone type '%s' is not allowed. Must be 'sink' or 'source'!", zoneType);
       return HAL_FAIL;
     }
+
+    // Check that zoneMappingJ is an array
+    ASSERT_JARRAY(zoneMappingJ, "ZONE: Zone mapping object must be an array!");
 
     // Check that the mapping has at least one element
     if (json_object_array_length(zoneMappingJ) <= 0)
@@ -379,6 +470,10 @@ HAL_ERRCODE validateZones(json_object *zonesJ)
       AFB_ApiError(NULL, "ZONE: Zone map must have at least one element!");
       return HAL_FAIL;
     }
+
+    // Check that each mapping entry corresponds to a card
+    if (validateZoneMapping(zoneMappingJ, cardsJ, sinkSourceType) == HAL_FAIL)
+      return HAL_FAIL;
   }
 
   AFB_ApiNotice(NULL, "ZONE: OK!");
