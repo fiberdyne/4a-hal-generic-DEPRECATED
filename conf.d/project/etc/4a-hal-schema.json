@@ -212,6 +212,10 @@
           "type":"string",
           "description": "An informative field describing the card"
         },
+        "api": {
+          "type": "string",
+          "description": "A string specifying the AFB API name for this card's HAL plugin"
+        },
         "channels": {
           "type": "object",
           "description": "An object declaring the sinks and sources available for this card",
@@ -228,7 +232,7 @@
           "required": [ "sink" ]
         }
       },
-      "required": ["name", "channels"]
+      "required": [ "name", "api", "channels" ]
     },
     "zone": {
       "type": "object",
