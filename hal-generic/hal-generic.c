@@ -194,56 +194,85 @@ OnErrorExit:
 STATIC int hal_generic_init()
 {
   int err = 0;
-  json_object *streammapJ = NULL, *cardpropsJ = NULL;
+  int cardInfoIdx = 0, cardInfoLength = 0;
+  json_object *cardInfoArrayJ = NULL, *streammapJ = NULL, *cardpropsJ = NULL,
+              *cardInfoCurrJ = NULL;
 
   AFB_NOTICE("Initializing 4a-hal-generic");
   
-  // Check that hal plugin is present. If so, we can initialize it.
-    err = afb_daemon_require_api("fd-dsp-hifi2", 1);
-    if (err)
-    {
-        AFB_ERROR("Failed to access fd-dsp-hifi2 API");
-        goto OnErrorExit;
-    }
+
 
   // If the hal plugin is present, we need to configure our custom sound card to provide all the required interfaces.
   // This will load the configuration json file, and set up the sound card  
   if (!_cardsJ || !_streamsJ || !_ctlsJ || !_zonesJ)
   {
     AFB_ApiError(NULL, "Cannot initialize HAL plugin: JSON config is not valid!");
-    goto OnErrorExit;
-  }
+    return err;
+    }
 
-  cardpropsJ = generateCardProperties(json_object_array_get_idx(_cardsJ, 0),
-                                      "xfalsa");
-  streammapJ = generateStreamMap(_streamsJ, _zonesJ, "xfalsa");
+  cardInfoArrayJ = getCardInfo(_cardsJ);
+  cardInfoLength = json_object_array_length(cardInfoArrayJ);
 
-  AFB_NOTICE("Start Initialize of sound card");
-  err = initialize_sound_card(cardpropsJ, streammapJ);
-  if (err)
+  // Can only support one card at present, due to hal-interface only allowing
+  // one halSndCard instance in it's current implementation.
+  cardInfoLength = 1; // TODO: revise
+
+  for (cardInfoIdx = 0; cardInfoIdx < cardInfoLength; cardInfoIdx++)
   {
-    AFB_ApiError(NULL, "Initializing Sound Card failed!");
-    goto OnErrorExit;
-  }
+    char *cardName = NULL, *cardApi = NULL, *cardInfo = NULL;
+    json_object *cardCurrJ = NULL;
 
-    /* HAL sound card mapping info */
-  alsaHalSndCard.name = "xfalsa"; /*  WARNING: name MUST match with 'aplay -l' */
-  alsaHalSndCard.info = "HAL for FD-DSP sound card controlled by ADSP binding+plugin";
-  alsaHalSndCard.ctls = generateAlsaHalMap(_ctlsJ);
-  alsaHalSndCard.volumeCB = NULL; /* use default volume normalization function */
+    // Get the card info for this iteration
+    cardInfoCurrJ = json_object_array_get_idx(cardInfoArrayJ, cardInfoIdx);
+    wrap_json_unpack(cardInfoCurrJ, "{s:s,s:s,s?s}",
+                     "name", &cardName, "api", &cardApi, "info", &cardInfo);
 
-  err = halServiceInit(afbBindingV2.api, &alsaHalSndCard);
-  if (err)
-  {
-    AFB_ApiError(NULL, "Cannot initialize ALSA soundcard.");
-    goto OnErrorExit;
+    // Check that HAL plugin AFB API is present.
+    if (afb_daemon_require_api(cardApi, 1))
+    {
+        AFB_ApiError(NULL, "AFB API '%s' is not availble!", cardApi);
+        return (int)HAL_FAIL;
+    }
+
+    // Fetch the card object from _cardsJ for a given card name
+    cardCurrJ = json_object_array_find(_cardsJ, "name", cardName);
+    if (!cardCurrJ)
+    {
+      AFB_ApiError(NULL, "CARD: Does not exist: '%s'", cardName);
+      return (int)HAL_FAIL;
+    }
+
+    // Generate the info to send to the HAL plugin
+    cardpropsJ = generateCardProperties(cardCurrJ, cardName);
+    streammapJ = generateStreamMap(_streamsJ, _zonesJ, cardName);
+
+    // Attempt to initialize the HAL plugin by it's AFB API
+    AFB_ApiNotice(NULL, "Initialize HAL plugin (name: '%s', api: '%s')",
+                  cardName, cardApi);
+    err = initHalPlugin(cardApi, cardpropsJ, streammapJ);
+    if (err)
+    {
+      AFB_ApiError(NULL, "Initialize HAL plugin failed! (name: '%s', api: '%s')",
+                   cardName, cardApi);
+      return err;
+    }
+
+    // HAL sound card mapping info
+    alsaHalSndCard.name = cardName; //  WARNING: name MUST match with 'aplay -l'
+    alsaHalSndCard.info = cardInfo;
+    alsaHalSndCard.ctls = generateAlsaHalMap(_ctlsJ); // Generate halmap controls
+    alsaHalSndCard.volumeCB = NULL; // Use default volume normalization function
+
+    // Register the HAL with the loaded sound card halmap
+    err = halServiceInit(afbBindingV2.api, &alsaHalSndCard);
+    if (err)
+    {
+      AFB_ApiError(NULL, "Cannot initialize ALSA soundcard: %s", cardName);
+      return err;
+    }
   }
 
   AFB_NOTICE(".. Initializing Complete!");
-  return err;
-
-OnErrorExit:
-  AFB_ApiError(NULL, "hal_generic_init() - end");
   return err;
 }
 

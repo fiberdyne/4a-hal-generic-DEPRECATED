@@ -142,7 +142,8 @@ json_object *json_object_array_find(json_object *arrayJ,
   return NULL;
 }
 
-HAL_ERRCODE initialize_sound_card(json_object *cardpropsJ,
+HAL_ERRCODE initHalPlugin(const char *halPluginName,
+                          json_object *cardpropsJ,
                                   json_object *streammapJ)
 {
   json_object *cfgJ = NULL;
@@ -158,7 +159,7 @@ HAL_ERRCODE initialize_sound_card(json_object *cardpropsJ,
 
   // printf("jobj from str:\n---\n%s\n---\n", json_object_to_json_string_ext(cfgJ, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_PRETTY));
 
-  result = afb_service_call_sync("fd-dsp-hifi2", "initialize_sndcard", cfgJ, &cfgResultJ);
+  result = afb_service_call_sync(halPluginName, "initialize_sndcard", cfgJ, &cfgResultJ);
   AFB_NOTICE("Result Code: %d, result: %s", result, json_object_get_string(cfgResultJ));
 
   if (result)
@@ -301,6 +302,36 @@ PUBLIC STATIC bool generateAlsaHalMapCtl(json_object *ctlJ,
 }
 
 /*
+ * @brief Get the ALSA card info (name, api) from JSON config
+ * @param cardsJ : A json_object containing an array of card objects
+ * @return A json_object containing an array of card info objects
+ */
+PUBLIC json_object *getCardInfo(json_object *cardsJ)
+{
+  int cardsIdx = 0;
+  int cardsLength = json_object_array_length(cardsJ);
+  json_object *cardInfoArrayJ = NULL, *cardInfoJ = NULL;
+  
+  wrap_json_pack(&cardInfoArrayJ, "[]");
+
+  for (cardsIdx = 0; cardsIdx < cardsLength; cardsIdx++)
+  {
+    char *name = NULL, *api = NULL, *info = NULL;
+    json_object *cardCurrJ = NULL;
+
+    cardCurrJ = json_object_array_get_idx(cardsJ, cardsIdx);
+    
+    wrap_json_unpack(cardCurrJ, "{s?s,s?s,s?s}",
+                     "name", &name, "api", &api, "info", &info);
+                     
+    wrap_json_pack(&cardInfoJ, "{s:s,s:s,s?s}",
+                   "name", name, "api", api, "info", info);
+
+    json_object_array_add(cardInfoArrayJ, cardInfoJ);
+  }
+
+  return cardInfoArrayJ;
+}
  * @brief Generate a 'cardprops' object from a 'card' config
  * @param cardsJ : A json_object containing an a card object
  * @return A json_object containing a 'cardprops' object
