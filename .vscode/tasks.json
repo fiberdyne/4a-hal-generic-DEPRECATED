@@ -1,0 +1,57 @@
+{
+    "version": "2.0.0",
+    "type": "shell",
+    "presentation": {
+        "reveal": "always"
+    },
+    "tasks": [
+      {
+        "label": "clean-m3ulcb",
+        "command": "rm -rf build",
+        "problemMatcher": []
+      },
+      {
+        "label": "clean-x64",
+        "command": "rm -rf build_x64",
+        "problemMatcher": []
+      },
+      {
+        "label": "build-m3ulcb",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "command": "mkdir -p build && cd build && rm 4a-hal-generic.wgt && AGL-cmake .. && AGL-autobuild .. \"package BUILD_DIR=. DEST=package\"",
+        "problemMatcher": [
+          "$gcc"
+        ]
+      },
+      {
+        "label": "build-x64",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "command": "mkdir -p build_x64 && cd build_x64 && cmake .. && make",
+        "problemMatcher": [
+          "$gcc"
+        ]
+      },
+      {
+        "label": "deploy-m3ulcb",
+        "command": "scp build/4a-hal-generic.wgt root@192.168.1.197:~/",
+        "problemMatcher": [],
+        "dependsOn": [
+          "build-m3ulcb"
+        ]
+      },
+      {
+        "label": "deploy-binary-m3ulcb",
+        "command": "scp build/package/lib/hal-generic.so root@192.168.1.197:~/",
+        "problemMatcher": [],
+        "dependsOn": [
+          "build-m3ulcb"
+        ]
+      }
+    ]
+  }
