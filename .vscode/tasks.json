@@ -21,7 +21,7 @@
           "kind": "build",
           "isDefault": true
         },
-        "command": "mkdir -p build && cd build && rm 4a-hal-generic.wgt && AGL-cmake .. && AGL-autobuild .. \"package BUILD_DIR=. DEST=package\"",
+        "command": "mkdir -p build && cd build && rm -rf *.wgt && AGL-cmake .. && AGL-autobuild .. \"package BUILD_DIR=. DEST=package\"",
         "problemMatcher": [
           "$gcc"
         ]
