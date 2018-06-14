@@ -1,3 +1,6 @@
+# DEPRECATED
+The new code is located at [https://github.com/iotbzh/4a-hal-generic](https://github.com/iotbzh/4a-hal-generic)
+
 # 4a-hal-generic
 
 This project aims to provide a generic Hardware Abstraction Layer (HAL) for AGL's 4A (AGL Advanced Audio Architecture). The main feature of the generic HAL is that it becomes completely run-time dynamic in nature by employing the app-controller submodule.
